@@ -1,0 +1,671 @@
+{
+	"info": {
+		"name": "LMS API - Nhóm 2: Sách vật lý",
+		"description": "API Test Collection - Quản lý Sách vật lý (Borrow/Return/Renew)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "0. ĐĂNG NHẬP (Required)",
+			"item": [
+				{
+					"name": "0.1 Đăng nhập User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Set token variable', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('access_token');",
+									"    pm.collectionVariables.set('token', jsonData.access_token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["login"]
+						},
+						"description": "Đăng nhập để lấy token cho các API bên dưới"
+					}
+				}
+			]
+		},
+		{
+			"name": "5. NHÓM MƯỢN TRẢ (Borrow)",
+			"item": [
+				{
+					"name": "5.1 Mượn sách",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 422]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response has borrow_record or error message', function() {",
+									"    var jsonData = pm.response.json();",
+									"    if (pm.response.code === 200) {",
+									"        pm.expect(jsonData).to.have.property('borrow_record');",
+									"    } else {",
+									"        pm.expect(jsonData.error).to.exist;",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/borrow/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["borrow", "1"]
+						},
+						"description": "Mượn một cuốn sách (copy_id = 1)"
+					}
+				},
+				{
+					"name": "5.2 Mượn sách - Đã mượn rồi (test lỗi)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 422 - đã mượn rồi', function() {",
+									"    pm.response.to.have.status(422);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/borrow/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["borrow", "1"]
+						},
+						"description": "Test lỗi khi mượn sách đã mượn"
+					}
+				},
+				{
+					"name": "5.3 Trả sách",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response has borrow details or error', function() {",
+									"    var jsonData = pm.response.json();",
+									"    if (pm.response.code === 200) {",
+									"        pm.expect(jsonData).to.have.property('borrow_fee');",
+									"    } else {",
+									"        pm.expect(jsonData.error).to.exist;",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/return/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["return", "1"]
+						},
+						"description": "Trả sách (borrow_id = 1)"
+					}
+				},
+				{
+					"name": "5.4 Gia hạn sách",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response has message or error', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasValidResponse = jsonData.message || jsonData.error;",
+									"    pm.expect(hasValidResponse).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"days\": 9\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/renew/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["renew", "1"]
+						},
+						"description": "Gia hạn sách thêm 9 ngày"
+					}
+				},
+				{
+					"name": "5.5 Lịch sử mượn",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has borrow history', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('data');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/my-borrows",
+							"host": ["{{baseUrl}}"],
+							"path": ["my-borrows"]
+						},
+						"description": "Lấy lịch sử mượn sách"
+					}
+				}
+			]
+		},
+		{
+			"name": "6. NHÓM ĐẶT TRƯỚC (Reservation)",
+			"item": [
+				{
+					"name": "6.1 Đặt trước sách",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 422]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response has reservation or error', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasValidResponse = jsonData.reservation_id || jsonData.error;",
+									"    pm.expect(hasValidResponse).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"expected_borrow_days\": 5\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/reserve/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["reserve", "1"]
+						},
+						"description": "Đặt trước sách với book_id = 1"
+					}
+				},
+				{
+					"name": "6.2 Danh sách đặt trước của tôi",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/my-reservations",
+							"host": ["{{baseUrl}}"],
+							"path": ["my-reservations"]
+						},
+						"description": "Lấy danh sách đặt trước"
+					}
+				},
+				{
+					"name": "6.3 Hủy đặt trước",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/reservation/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["reservation", "1"]
+						},
+						"description": "Hủy đặt trước với reservation_id = 1"
+					}
+				}
+			]
+		},
+		{
+			"name": "7. NHÓM EBOOK NGƯỜI DÙNG",
+			"item": [
+				{
+					"name": "7.1 Sách đã mua",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/my-ebooks",
+							"host": ["{{baseUrl}}"],
+							"path": ["my-ebooks"]
+						},
+						"description": "Lấy danh sách ebook đã mua"
+					}
+				},
+				{
+					"name": "7.2 Mua ebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 422]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response has purchase or error', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasValidResponse = jsonData.purchase || jsonData.error;",
+									"    pm.expect(hasValidResponse).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/ebooks/1/purchase",
+							"host": ["{{baseUrl}}"],
+							"path": ["ebooks", "1", "purchase"]
+						},
+						"description": "Mua ebook với ebook_id = 1"
+					}
+				},
+				{
+					"name": "7.3 Mua ebook - Đã mua rồi (test lỗi)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 422 - đã mua rồi', function() {",
+									"    pm.response.to.have.status(422);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/ebooks/1/purchase",
+							"host": ["{{baseUrl}}"],
+							"path": ["ebooks", "1", "purchase"]
+						},
+						"description": "Test lỗi khi mua lại ebook"
+					}
+				}
+			]
+		},
+		{
+			"name": "8. NHÓM ĐÁNH GIÁ (Review)",
+			"item": [
+				{
+					"name": "8.1 Đánh giá sách vật lý",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([201, 422]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response has review or error', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasValidResponse = jsonData.review || jsonData.error;",
+									"    pm.expect(hasValidResponse).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rating\": 5,\n    \"comment\": \"Sách rất hay và bổ ích!\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/reviews/book/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["reviews", "book", "1"]
+						},
+						"description": "Đánh giá sách vật lý với book_id = 1"
+					}
+				},
+				{
+					"name": "8.2 Đánh giá ebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([201, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"rating\": 4,\n    \"comment\": \"Ebook rất tiện lợi để đọc trên điện thoại\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/reviews/ebook/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["reviews", "ebook", "1"]
+						},
+						"description": "Đánh giá ebook với ebook_id = 1"
+					}
+				}
+			]
+		}
+	]
+}

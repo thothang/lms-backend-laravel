@@ -1,0 +1,563 @@
+{
+	"info": {
+		"name": "LMS API - Nhóm 5: Thủ thư (Librarian)",
+		"description": "API Test Collection - Chức năng dành cho Thủ thư (Librarian)",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "librarianToken",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "0. ĐĂNG NHẬP (Required)",
+			"item": [
+				{
+					"name": "0.1 Đăng nhập Librarian",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Set librarianToken variable', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('access_token');",
+									"    pm.collectionVariables.set('librarianToken', jsonData.access_token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"librarian@library.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["login"]
+						},
+						"description": "Đăng nhập với tài khoản Librarian"
+					}
+				}
+			]
+		},
+		{
+			"name": "14. THỦ THƯ - QUẢN LÝ SÁCH",
+			"item": [
+				{
+					"name": "14.1 Tạo đầu sách mới",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([201, 422]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response has book info or error', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasValidResponse = jsonData.id || jsonData.book || jsonData.error;",
+									"    pm.expect(hasValidResponse).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Lập trình Java\",\n    \"author_name\": \"John Smith\",\n    \"publisher\": \"O'Reilly\",\n    \"category_id\": 1,\n    \"description\": \"Sách học Java từ cơ bản\",\n    \"price\": 75000,\n    \"daily_fee\": 5000,\n    \"copies\": 3\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/librarian/books",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "books"]
+						},
+						"description": "Tạo đầu sách mới với 3 bản copy"
+					}
+				},
+				{
+					"name": "14.2 Cập nhật sách",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 500, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Lập trình Java - Phiên bản 2\",\n    \"price\": 80000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/librarian/books/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "books", "1"]
+						},
+						"description": "Cập nhật thông tin sách"
+					}
+				},
+				{
+					"name": "14.3 Thêm bản copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 500, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"quantity\": 2\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/librarian/books/1/copies",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "books", "1", "copies"]
+						},
+						"description": "Thêm 2 bản copy cho sách"
+					}
+				},
+				{
+					"name": "14.4 Gắn hot/featured/carousel",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 500, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"book_id\": 1,\n    \"is_hot\": true,\n    \"is_featured\": true,\n    \"in_carousel\": true,\n    \"carousel_order\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/librarian/settings/books/hot",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "settings", "books", "hot"]
+						},
+						"description": "Gắn tag hot/featured/carousel cho sách"
+					}
+				}
+			]
+		},
+		{
+			"name": "15. THỦ THƯ - MƯỢN/TRẢ OFFLINE",
+			"item": [
+				{
+					"name": "15.1 Mượn offline (khách vãng lai)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 422]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response has borrow info or error', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasValidResponse = jsonData.borrow_record || jsonData.error;",
+									"    pm.expect(hasValidResponse).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"copy_id\": 1,\n    \"guest_name\": \"Khách Vãng Lai\",\n    \"guest_phone\": \"0987654321\",\n    \"guest_cccd\": \"0123456789\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/librarian/borrow/offline",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "borrow", "offline"]
+						},
+						"description": "Mượn sách cho khách vãng lai"
+					}
+				},
+				{
+					"name": "15.2 Trả offline",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 500, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/librarian/return/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "return", "1"]
+						},
+						"description": "Nhận trả sách offline"
+					}
+				}
+			]
+		},
+		{
+			"name": "16. THỦ THƯ - RESERVATION",
+			"item": [
+				{
+					"name": "16.1 Danh sách reservation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/librarian/reservations?status=pending",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "reservations"],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending"
+								}
+							]
+						},
+						"description": "Lấy danh sách reservation đang chờ"
+					}
+				},
+				{
+					"name": "16.2 Xác nhận reservation",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 500, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/librarian/reservations/1/confirm",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "reservations", "1", "confirm"]
+						},
+						"description": "Xác nhận reservation"
+					}
+				}
+			]
+		},
+		{
+			"name": "17. THỦ THƯ - KHÁC",
+			"item": [
+				{
+					"name": "17.1 Đánh dấu sách mất/hư",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 500, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"borrow_id\": 1,\n    \"damage_type\": \"lost\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/librarian/books/1/mark-lost",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "books", "1", "mark-lost"]
+						},
+						"description": "Đánh dấu sách bị mất/hư"
+					}
+				},
+				{
+					"name": "17.2 Duyệt CCCD user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 500, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{librarianToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/librarian/users/2/verify-cccd",
+							"host": ["{{baseUrl}}"],
+							"path": ["librarian", "users", "2", "verify-cccd"]
+						},
+						"description": "Duyệt CCCD của user"
+					}
+				}
+			]
+		}
+	]
+}

@@ -1,0 +1,335 @@
+{
+	"info": {
+		"name": "LMS API - Nhóm 4: Tác giả (Author)",
+		"description": "API Test Collection - Chức năng dành cho Tác giả ebook",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "authorToken",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "0. ĐĂNG NHẬP (Required)",
+			"item": [
+				{
+					"name": "0.1 Đăng nhập Author",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Set authorToken variable', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('access_token');",
+									"    pm.collectionVariables.set('authorToken', jsonData.access_token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"author@example.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["login"]
+						},
+						"description": "Đăng nhập với tài khoản Author"
+					}
+				}
+			]
+		},
+		{
+			"name": "13. NHÓM TÁC GIẢ (Author)",
+			"item": [
+				{
+					"name": "13.1 Upload ebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200, 201 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 201, 422]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response is valid', function() {",
+									"    try {",
+									"        var jsonData = pm.response.json();",
+									"        var hasValidResponse = jsonData.ebook_id || jsonData.message || jsonData.error;",
+									"        pm.expect(hasValidResponse).to.exist;",
+									"    } catch (e) {",
+									"        // HTML response is OK for some status codes",
+									"        pm.expect([200, 201, 422]).to.include(pm.response.code);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "title",
+									"value": "Lập trình Python cơ bản",
+									"type": "text"
+								},
+								{
+									"key": "description",
+									"value": "Sách hướng dẫn lập trình Python từ cơ bản đến nâng cao",
+									"type": "text"
+								},
+								{
+									"key": "price",
+									"value": "25000",
+									"type": "text"
+								},
+								{
+									"key": "is_free",
+									"value": "false",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/author/ebooks",
+							"host": ["{{baseUrl}}"],
+							"path": ["author", "ebooks"]
+						},
+						"description": "Upload ebook mới (multipart/form-data)"
+					}
+				},
+				{
+					"name": "13.2 Danh sách ebook của tôi",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has data array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('data');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/author/ebooks",
+							"host": ["{{baseUrl}}"],
+							"path": ["author", "ebooks"]
+						},
+						"description": "Lấy danh sách ebook của tác giả"
+					}
+				},
+				{
+					"name": "13.3 Cập nhật ebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"title\": \"Lập trình Python cơ bản - Phiên bản 2\",\n    \"description\": \"Sách đã được cập nhật nội dung mới\",\n    \"price\": 30000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/author/ebooks/1",
+							"host": ["{{baseUrl}}"],
+							"path": ["author", "ebooks", "1"]
+						},
+						"description": "Cập nhật thông tin ebook"
+					}
+				},
+				{
+					"name": "13.4 Xem doanh thu",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has earnings info', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasValidResponse = jsonData.earnings_balance !== undefined || jsonData.balance !== undefined || jsonData.error;",
+									"    pm.expect(hasValidResponse).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/author/earnings",
+							"host": ["{{baseUrl}}"],
+							"path": ["author", "earnings"]
+						},
+						"description": "Xem thông tin doanh thu"
+					}
+				},
+				{
+					"name": "13.5 Yêu cầu rút tiền",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 422]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{authorToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 50000,\n    \"bank_account\": \"1234567890\",\n    \"bank_name\": \"Vietcombank\",\n    \"account_holder\": \"NGUYEN VAN A\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/author/withdraw",
+							"host": ["{{baseUrl}}"],
+							"path": ["author", "withdraw"]
+						},
+						"description": "Yêu cầu rút tiền"
+					}
+				}
+			]
+		}
+	]
+}

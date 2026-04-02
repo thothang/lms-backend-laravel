@@ -1,0 +1,491 @@
+{
+	"info": {
+		"name": "LMS API - Nhóm 3: Thanh toán & Thông báo",
+		"description": "API Test Collection - Thanh toán, Thông báo, Tin nhắn",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "0. ĐĂNG NHẬP (Required)",
+			"item": [
+				{
+					"name": "0.1 Đăng nhập User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Set token variable', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('access_token');",
+									"    pm.collectionVariables.set('token', jsonData.access_token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"user@example.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["login"]
+						},
+						"description": "Đăng nhập để lấy token"
+					}
+				}
+			]
+		},
+		{
+			"name": "9. NHÓM THANH TOÁN (Payment)",
+			"item": [
+				{
+					"name": "9.1 Nạp tiền qua Sepay",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 422', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 422]).to.include(status);",
+									"});",
+									"",
+									"pm.test('Response has payment_url or error', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasValidResponse = jsonData.payment_url || jsonData.error;",
+									"    pm.expect(hasValidResponse).to.exist;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"amount\": 100000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/deposit",
+							"host": ["{{baseUrl}}"],
+							"path": ["deposit"]
+						},
+						"description": "Nạp tiền 100,000 VNĐ qua Sepay"
+					}
+				},
+				{
+					"name": "9.2 Sepay Callback (Webhook)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 400', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 400]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"transaction_id\": \"sepay_test_123\",\n    \"status\": \"success\",\n    \"amount\": 100000,\n    \"signature\": \"test_signature\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/sepay-callback",
+							"host": ["{{baseUrl}}"],
+							"path": ["sepay-callback"]
+						},
+						"description": "Webhook callback từ Sepay (test)"
+					}
+				}
+			]
+		},
+		{
+			"name": "10. NHÓM VÉ THƯ VIỆN",
+			"item": [
+				{
+					"name": "10.1 Mua vé thư viện",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has ticket info', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('ticket');",
+									"    pm.expect(jsonData.ticket).to.have.property('valid_from');",
+									"    pm.expect(jsonData.ticket).to.have.property('valid_to');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"days\": 30\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/buy-library-ticket",
+							"host": ["{{baseUrl}}"],
+							"path": ["buy-library-ticket"]
+						},
+						"description": "Mua vé thư viện 30 ngày"
+					}
+				}
+			]
+		},
+		{
+			"name": "11. NHÓM THÔNG BÁO (Notification)",
+			"item": [
+				{
+					"name": "11.1 Lấy thông báo",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications"]
+						},
+						"description": "Lấy danh sách thông báo"
+					}
+				},
+				{
+					"name": "11.2 Đánh dấu đã đọc",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/notifications/1/read",
+							"host": ["{{baseUrl}}"],
+							"path": ["notifications", "1", "read"]
+						},
+						"description": "Đánh dấu thông báo đã đọc"
+					}
+				}
+			]
+		},
+		{
+			"name": "12. NHÓM TIN NHẮN (Message)",
+			"item": [
+				{
+					"name": "12.1 Lấy tin nhắn đã nhận",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/messages?type=received",
+							"host": ["{{baseUrl}}"],
+							"path": ["messages"],
+							"query": [
+								{
+									"key": "type",
+									"value": "received"
+								}
+							]
+						},
+						"description": "Lấy tin nhắn đã nhận"
+					}
+				},
+				{
+					"name": "12.2 Lấy tin nhắn đã gửi",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/messages?type=sent",
+							"host": ["{{baseUrl}}"],
+							"path": ["messages"],
+							"query": [
+								{
+									"key": "type",
+									"value": "sent"
+								}
+							]
+						},
+						"description": "Lấy tin nhắn đã gửi"
+					}
+				},
+				{
+					"name": "12.3 Gửi tin nhắn",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 201', function() {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"to_user_id\": 2,\n    \"message\": \"Xin chào, tôi cần hỗ trợ về việc mượn sách.\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/messages",
+							"host": ["{{baseUrl}}"],
+							"path": ["messages"]
+						},
+						"description": "Gửi tin nhắn đến user_id = 2"
+					}
+				},
+				{
+					"name": "12.4 Đánh dấu đã đọc tin nhắn",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/messages/1/read",
+							"host": ["{{baseUrl}}"],
+							"path": ["messages", "1", "read"]
+						},
+						"description": "Đánh dấu tin nhắn đã đọc"
+					}
+				}
+			]
+		}
+	]
+}

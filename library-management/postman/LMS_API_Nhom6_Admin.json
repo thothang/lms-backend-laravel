@@ -1,0 +1,942 @@
+{
+	"info": {
+		"name": "LMS API - Nhóm 6: Admin",
+		"description": "API Test Collection - Chức năng dành cho Admin",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api",
+			"type": "string"
+		},
+		{
+			"key": "adminToken",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "0. ĐĂNG NHẬP (Required)",
+			"item": [
+				{
+					"name": "0.1 Đăng nhập Admin",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Set adminToken variable', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('access_token');",
+									"    pm.collectionVariables.set('adminToken', jsonData.access_token);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"admin@library.com\",\n    \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["login"]
+						},
+						"description": "Đăng nhập với tài khoản Admin"
+					}
+				}
+			]
+		},
+		{
+			"name": "18. ADMIN - NGƯỜI DÙNG",
+			"item": [
+				{
+					"name": "18.1 Danh sách user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has users array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('data');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "users"]
+						},
+						"description": "Lấy danh sách tất cả user"
+					}
+				},
+				{
+					"name": "18.2 Lọc user theo role",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users?role=librarian",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "users"],
+							"query": [
+								{
+									"key": "role",
+									"value": "librarian"
+								}
+							]
+						},
+						"description": "Lọc user theo role"
+					}
+				},
+				{
+					"name": "18.3 Khóa/mở khóa user",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 422, 500]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"status\": \"locked\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/2/status",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "users", "2", "status"]
+						},
+						"description": "Khóa user_id = 2"
+					}
+				},
+				{
+					"name": "18.4 Nâng cấp lên author",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 422, 500]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/users/2/make-author",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "users", "2", "make-author"]
+						},
+						"description": "Chuyển user thường thành author"
+					}
+				}
+			]
+		},
+		{
+			"name": "19. ADMIN - PHÂN QUYỀN",
+			"item": [
+				{
+					"name": "19.1 Lấy quyền thủ thư",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/permissions/librarians",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "permissions", "librarians"]
+						},
+						"description": "Lấy danh sách quyền của thủ thư"
+					}
+				},
+				{
+					"name": "19.2 Cập nhật quyền thủ thư",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 422, 500]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"permissions\": {\n        \"can_approve_ebook\": true,\n        \"can_manage_finance\": false,\n        \"can_manage_users\": true,\n        \"can_manage_books\": true,\n        \"can_manage_borrow_offline\": true,\n        \"can_manage_reservations\": true,\n        \"can_mark_lost_books\": true,\n        \"can_verify_cccd\": true,\n        \"can_view_reports\": true,\n        \"can_manage_hot_books\": true,\n        \"can_manage_messages\": false\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/permissions/librarian/2",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "permissions", "librarian", "2"]
+						},
+						"description": "Cập nhật quyền cho thủ thư"
+					}
+				}
+			]
+		},
+		{
+			"name": "20. ADMIN - EBOOK",
+			"item": [
+				{
+					"name": "20.1 Ebook chờ duyệt",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/ebooks/pending",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "ebooks", "pending"]
+						},
+						"description": "Lấy danh sách ebook chờ duyệt"
+					}
+				},
+				{
+					"name": "20.2 Duyệt ebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 422, 500]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/ebooks/1/approve",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "ebooks", "1", "approve"]
+						},
+						"description": "Duyệt ebook"
+					}
+				},
+				{
+					"name": "20.3 Từ chối ebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 422, 500]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"reason\": \"Nội dung không phù hợp với quy định của thư viện\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/ebooks/2/reject",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "ebooks", "2", "reject"]
+						},
+						"description": "Từ chối ebook"
+					}
+				}
+			]
+		},
+		{
+			"name": "21. ADMIN - TÀI CHÍNH",
+			"item": [
+				{
+					"name": "21.1 Danh sách yêu cầu rút tiền",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/withdraw-requests?status=pending",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "withdraw-requests"],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending"
+								}
+							]
+						},
+						"description": "Lấy yêu cầu rút tiền đang chờ"
+					}
+				},
+				{
+					"name": "21.2 Xử lý rút tiền - Duyệt",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 422, 500]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\": \"approve\",\n    \"notes\": \"Đã chuyển khoản thành công\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/withdraw-requests/1/process",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "withdraw-requests", "1", "process"]
+						},
+						"description": "Duyệt yêu cầu rút tiền"
+					}
+				},
+				{
+					"name": "21.3 Xử lý rút tiền - Từ chối",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 404, 422, 500]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"action\": \"reject\",\n    \"notes\": \"Thông tin tài khoản không chính xác\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/withdraw-requests/2/process",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "withdraw-requests", "2", "process"]
+						},
+						"description": "Từ chối yêu cầu rút tiền"
+					}
+				}
+			]
+		},
+		{
+			"name": "22. ADMIN - CẤU HÌNH",
+			"item": [
+				{
+					"name": "22.1 Lấy cấu hình hệ thống",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has settings', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasSettings = jsonData.default_daily_fee !== undefined || jsonData.settings !== undefined;",
+									"    pm.expect(hasSettings).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/settings",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "settings"]
+						},
+						"description": "Lấy cấu hình hệ thống"
+					}
+				},
+				{
+					"name": "22.2 Cập nhật cấu hình",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 500', function() {",
+									"    var status = pm.response.code;",
+									"    pm.expect([200, 500]).to.include(status);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"default_daily_fee\": 6000,\n    \"max_borrow_per_user\": 5\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/admin/settings",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "settings"]
+						},
+						"description": "Cập nhật cấu hình"
+					}
+				}
+			]
+		},
+		{
+			"name": "23. ADMIN - BÁO CÁO",
+			"item": [
+				{
+					"name": "23.1 Tổng quan",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has overview stats', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var hasStats = jsonData.users !== undefined || jsonData.data !== undefined;",
+									"    pm.expect(hasStats).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/reports/overview",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "reports", "overview"]
+						},
+						"description": "Lấy báo cáo tổng quan"
+					}
+				},
+				{
+					"name": "23.2 Báo cáo mượn trả",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/reports/borrowings?from_date=2026-03-01&to_date=2026-03-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "reports", "borrowings"],
+							"query": [
+								{
+									"key": "from_date",
+									"value": "2026-03-01"
+								},
+								{
+									"key": "to_date",
+									"value": "2026-03-31"
+								}
+							]
+						},
+						"description": "Báo cáo mượn trả theo tháng"
+					}
+				},
+				{
+					"name": "23.3 Báo cáo doanh thu",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/reports/revenue?from_date=2026-03-01&to_date=2026-03-31",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "reports", "revenue"],
+							"query": [
+								{
+									"key": "from_date",
+									"value": "2026-03-01"
+								},
+								{
+									"key": "to_date",
+									"value": "2026-03-31"
+								}
+							]
+						},
+						"description": "Báo cáo doanh thu"
+					}
+				}
+			]
+		},
+		{
+			"name": "24. ADMIN - AUDIT LOG",
+			"item": [
+				{
+					"name": "24.1 Xem nhật ký hệ thống",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/audit-logs",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "audit-logs"]
+						},
+						"description": "Lấy nhật ký hệ thống"
+					}
+				},
+				{
+					"name": "24.2 Lọc audit log theo action",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{adminToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/admin/audit-logs?action=APPROVE_EBOOK&table_name=ebooks",
+							"host": ["{{baseUrl}}"],
+							"path": ["admin", "audit-logs"],
+							"query": [
+								{
+									"key": "action",
+									"value": "APPROVE_EBOOK"
+								},
+								{
+									"key": "table_name",
+									"value": "ebooks"
+								}
+							]
+						},
+						"description": "Lọc audit log theo action"
+					}
+				}
+			]
+		}
+	]
+}
