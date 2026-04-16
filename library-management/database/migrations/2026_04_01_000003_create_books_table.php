@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('publisher')->nullable();
             $table->foreignId('category_id')->constrained('book_categories')->onDelete('restrict');
             $table->text('description')->nullable();
+            $table->string('cover_image')->nullable();
             $table->decimal('price', 12, 2);
             $table->decimal('daily_fee', 12, 2)->nullable(); // NULL uses default
             $table->boolean('is_hot')->default(false);

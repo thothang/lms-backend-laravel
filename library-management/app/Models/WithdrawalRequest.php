@@ -18,12 +18,33 @@ class WithdrawalRequest extends Model
         'admin_notes',
     ];
 
+    protected $appends = ['bank_account', 'bank_name', 'account_holder'];
+
     protected function casts(): array
     {
         return [
             'amount' => 'decimal:2',
             'bank_account_info' => 'array',
         ];
+    }
+
+    // Accessors for bank info (for API response)
+    public function getBankAccountAttribute(): ?string
+    {
+        $info = $this->bank_account_info;
+        return $info['bank_account'] ?? null;
+    }
+
+    public function getBankNameAttribute(): ?string
+    {
+        $info = $this->bank_account_info;
+        return $info['bank_name'] ?? null;
+    }
+
+    public function getAccountHolderAttribute(): ?string
+    {
+        $info = $this->bank_account_info;
+        return $info['account_holder'] ?? null;
     }
 
     // Status constants

@@ -11,25 +11,40 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Ebook extends Model
 {
     use HasFactory, SoftDeletes;
+ 
+    protected $appends = ['average_rating'];
 
     protected $fillable = [
         'title',
         'author_id',
+        'author_name', // Tên tác giả (cho ebook của admin/thủ thư)
+        'category_id',
         'description',
+        'cover_image',
         'price',
         'file_path',
         'free_preview_pages',
         'status',
         'rejection_reason',
         'is_free',
+        'uploaded_by_admin', // Đánh dấu ebook do admin/thủ thư đăng
+        'is_hot', // Ebook hot
+        'is_featured', // Ebook nổi bật
+        'in_carousel', // Ebook trong carousel
+        'carousel_order', // Thứ tự carousel
     ];
 
     protected function casts(): array
     {
         return [
             'price' => 'decimal:2',
+            'category_id' => 'integer',
             'free_preview_pages' => 'integer',
             'is_free' => 'boolean',
+            'is_hot' => 'boolean',
+            'is_featured' => 'boolean',
+            'in_carousel' => 'boolean',
+            'carousel_order' => 'integer',
         ];
     }
 
@@ -39,14 +54,19 @@ class Ebook extends Model
         return $this->belongsTo(User::class, 'author_id');
     }
 
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(BookCategory::class, 'category_id');
+    }
+
     public function purchases(): HasMany
     {
         return $this->hasMany(EbookPurchase::class);
     }
 
-    public function reviews(): MorphMany
+    public function reviews(): HasMany
     {
-        return $this->morphMany(Review::class, 'reviewable');
+        return $this->hasMany(Review::class);
     }
 
     // Check if user has purchased
@@ -117,5 +137,32 @@ class Ebook extends Model
     public function scopeFree($query)
     {
         return $query->where('is_free', true);
+    }
+
+    // Scope: Hot ebooks
+    public function scopeHot($query)
+    {
+        return $query->where('is_hot', true);
+    }
+
+    // Scope: Featured ebooks
+    public function scopeFeatured($query)
+    {
+        return $query->where('is_featured', true);
+    }
+
+    // Scope: Carousel ebooks
+    public function scopeCarousel($query)
+    {
+        return $query->where('in_carousel', true)
+            ->orderBy('carousel_order');
+    }
+
+    public function getCoverImageAttribute($value)
+    {
+        if ($value && !filter_var($value, FILTER_VALIDATE_URL)) {
+            return asset('storage/' . ltrim($value, '/'));
+        }
+        return $value;
     }
 }

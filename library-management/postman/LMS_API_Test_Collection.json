@@ -1,0 +1,340 @@
+{
+  "info": {
+    "name": "Library Management System API",
+    "description": "Test collection for LMS API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/register",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"password_confirmation\": \"password123\",\n  \"name\": \"Test User\",\n  \"phone\": \"0987654321\",\n  \"address\": \"Hanoi\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/login",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.access_token) {",
+                  "        pm.collectionVariables.set('token', jsonData.access_token);",
+                  "    }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Books",
+      "item": [
+        {
+          "name": "Get All Books",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/books"
+          }
+        },
+        {
+          "name": "Get Hot Books",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/books/hot"
+          }
+        },
+        {
+          "name": "Get Book Details",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/books/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ebooks",
+      "item": [
+        {
+          "name": "Get All Ebooks",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/ebooks"
+          }
+        },
+        {
+          "name": "Get Ebook Details",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/ebooks/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Actions (Requires Auth)",
+      "item": [
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/profile",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get My Borrows",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/my-borrows",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get My Reservations",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/my-reservations",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get My Ebooks",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/my-ebooks",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Balance",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/balance",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/notifications",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payment (Requires Auth)",
+      "item": [
+        {
+          "name": "Create Topup Payment",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/topup",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100000\n}"
+            }
+          }
+        },
+        {
+          "name": "Confirm Topup (Sandbox)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/topup/confirm",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Request-ID",
+                "value": "{{$guid}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 100000\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Payment History",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/payments/history",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Librarian (Requires Auth + Role)",
+      "item": [
+        {
+          "name": "Get All Borrows",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/librarian/borrows",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Finance Summary",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/librarian/finance/summary",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin (Requires Auth + Admin Role)",
+      "item": [
+        {
+          "name": "Get Users",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/users",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Pending Ebooks",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/ebooks/pending",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Get Audit Logs",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/admin/audit-logs",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

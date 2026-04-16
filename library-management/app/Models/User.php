@@ -20,8 +20,7 @@ class User extends Authenticatable implements JWTSubject
         'password',
         'phone',
         'address',
-        'cccd_number',
-        'cccd_image',
+        'verification_token',
         'dob',
         'balance',
         'earnings_balance',
@@ -35,13 +34,14 @@ class User extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
         'remember_token',
-        'cccd_number',
+        'verification_token',
     ];
 
     protected function casts(): array
     {
         return [
-            'dob' => 'date',
+            'email_verified_at' => 'datetime',
+            'dob' => 'date:Y-m-d',
             'balance' => 'decimal:2',
             'earnings_balance' => 'decimal:2',
             'total_earned' => 'decimal:2',
@@ -140,21 +140,22 @@ class User extends Authenticatable implements JWTSubject
     public function addBalance(float $amount): void
     {
         DB::transaction(function () use ($amount) {
-            $this->lockForUpdate();
-            $this->increment('balance', $amount);
+            User::where('id', $this->id)->lockForUpdate()->update([
+                'balance' => DB::raw('balance + ' . $amount)
+            ]);
         });
     }
 
     public function subtractBalance(float $amount): bool
     {
         return DB::transaction(function () use ($amount) {
-            $this->lockForUpdate();
+            $user = User::where('id', $this->id)->lockForUpdate()->first();
             
-            if ($this->balance < $amount) {
+            if ($user->balance < $amount) {
                 return false;
             }
             
-            $this->decrement('balance', $amount);
+            $user->decrement('balance', $amount);
             return true;
         });
     }
@@ -163,22 +164,23 @@ class User extends Authenticatable implements JWTSubject
     public function addEarnings(float $amount): void
     {
         DB::transaction(function () use ($amount) {
-            $this->lockForUpdate();
-            $this->increment('earnings_balance', $amount);
-            $this->increment('total_earned', $amount);
+            User::where('id', $this->id)->lockForUpdate()->update([
+                'earnings_balance' => DB::raw('earnings_balance + ' . $amount),
+                'total_earned' => DB::raw('total_earned + ' . $amount)
+            ]);
         });
     }
 
     public function subtractEarnings(float $amount): bool
     {
         return DB::transaction(function () use ($amount) {
-            $this->lockForUpdate();
+            $user = User::where('id', $this->id)->lockForUpdate()->first();
             
-            if ($this->earnings_balance < $amount) {
+            if ($user->earnings_balance < $amount) {
                 return false;
             }
             
-            $this->decrement('earnings_balance', $amount);
+            $user->decrement('earnings_balance', $amount);
             return true;
         });
     }
@@ -187,21 +189,22 @@ class User extends Authenticatable implements JWTSubject
     public function addDebt(float $amount): void
     {
         DB::transaction(function () use ($amount) {
-            $this->lockForUpdate();
-            $this->increment('total_debt', $amount);
+            User::where('id', $this->id)->lockForUpdate()->update([
+                'total_debt' => DB::raw('total_debt + ' . $amount)
+            ]);
         });
     }
 
     public function payDebt(float $amount): bool
     {
         return DB::transaction(function () use ($amount) {
-            $this->lockForUpdate();
+            $user = User::where('id', $this->id)->lockForUpdate()->first();
             
-            if ($this->total_debt < $amount) {
-                $amount = $this->total_debt;
+            if ($user->total_debt < $amount) {
+                $amount = $user->total_debt;
             }
             
-            $this->decrement('total_debt', $amount);
+            $user->decrement('total_debt', $amount);
             return true;
         });
     }
@@ -272,23 +275,4 @@ class User extends Authenticatable implements JWTSubject
         return $rolePermission->{$permission} ?? false;
     }
 
-    // Get decrypted CCCD number (for admin only)
-    public function getDecryptedCccdNumber(): ?string
-    {
-        if (!$this->cccd_number) {
-            return null;
-        }
-
-        try {
-            return Crypt::decryptString($this->cccd_number);
-        } catch (\Exception $e) {
-            return $this->cccd_number;
-        }
-    }
-
-    // Set encrypted CCCD number
-    public function setCccdNumberAttribute(string $value): void
-    {
-        $this->attributes['cccd_number'] = Crypt::encryptString($value);
-    }
 }

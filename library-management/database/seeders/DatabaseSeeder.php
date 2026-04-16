@@ -49,7 +49,6 @@ class DatabaseSeeder extends Seeder
             'can_manage_borrow_offline' => true,
             'can_manage_reservations' => true,
             'can_mark_lost_books' => true,
-            'can_verify_cccd' => true,
             'can_view_reports' => true,
             'can_manage_hot_books' => true,
             'can_manage_messages' => true,
@@ -86,5 +85,10 @@ class DatabaseSeeder extends Seeder
         $this->command->info('Database seeded successfully!');
         $this->command->info('Admin login: admin@library.com / password');
         $this->command->info('Librarian login: librarian@library.com / password');
+
+        // Call TestDataSeeder
+        $this->call([
+            TestDataSeeder::class,
+        ]);
     }
 }

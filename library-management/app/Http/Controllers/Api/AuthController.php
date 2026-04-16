@@ -10,9 +10,12 @@ use App\Http\Requests\ChangePasswordRequest;
 use App\Models\User;
 use App\Models\Notification;
 use App\Models\AuditLog;
+use App\Mail\VerifyEmailMail;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
@@ -25,12 +28,7 @@ class AuthController extends Controller
     public function register(RegisterRequest $request): JsonResponse
     {
         $data = $request->validated();
-
-        // Handle CCCD image upload
-        $cccdImagePath = null;
-        if ($request->hasFile('cccd_image')) {
-            $cccdImagePath = $request->file('cccd_image')->store('cccd_images', 'private');
-        }
+        $verificationToken = \Illuminate\Support\Str::random(60);
 
         // Create user
         $user = User::create([
@@ -39,20 +37,15 @@ class AuthController extends Controller
             'password' => $data['password'],
             'phone' => $data['phone'] ?? null,
             'address' => $data['address'] ?? null,
-            'cccd_number' => $data['cccd_number'] ?? null,
-            'cccd_image' => $cccdImagePath,
-            'dob' => $data['dob'] ?? null,
+            'dob' => !empty($data['dob']) ? $data['dob'] : null,
             'role' => 'user',
             'status' => 'unverified',
+            'verification_token' => $verificationToken,
         ]);
 
-        // Create notification
-        Notification::create([
-            'user_id' => $user->id,
-            'title' => 'Chào mừng bạn đến với Thư viện!',
-            'content' => 'Tài khoản của bạn đã được tạo. Vui lòng chờ quản trị viên xác minh CCCD để kích hoạt tài khoản.',
-            'type' => 'web',
-        ]);
+        // Send Email verification
+        $verifyUrl = url('/api/verify-email/' . $verificationToken);
+        Mail::to($user->email)->send(new VerifyEmailMail($user, $verifyUrl));
 
         // Log action
         AuditLog::log(
@@ -66,11 +59,63 @@ class AuthController extends Controller
             $request->userAgent()
         );
 
-        return response()->json([
-            'message' => 'Đăng ký thành công. Chờ duyệt CCCD.',
+        // Create Database Notification
+        Notification::create([
             'user_id' => $user->id,
-            'status' => $user->status,
+            'title' => 'Chào mừng bạn đến với Thư viện!',
+            'content' => 'Tài khoản đã được tạo thành công. Vui lòng kiểm tra email để xác thực và bắt đầu sử dụng đầy đủ tính năng.',
+            'type' => Notification::TYPE_WEB,
+        ]);
+
+        // Generate JWT token for auto-login
+        $token = JWTAuth::fromUser($user);
+
+        return response()->json([
+            'message' => 'Đăng ký thành công. Vui lòng xác thực email để kích hoạt tài khoản.',
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'status' => $user->status,
+                'balance' => $user->balance,
+            ],
+            'verification_token' => $verificationToken,
         ], 201);
+    }
+
+    /**
+     * Verify user email
+     */
+    public function verifyEmail(string $token): RedirectResponse
+    {
+        $user = User::where('verification_token', $token)->first();
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+
+        if (!$user) {
+            return redirect()->away($frontendUrl . '/?verified=0&message=invalid_token');
+        }
+
+        $user->update([
+            'status' => 'active',
+            'email_verified_at' => now(),
+            'verification_token' => null,
+        ]);
+
+        // Create welcome notification
+        Notification::create([
+            'user_id' => $user->id,
+            'title' => 'Chào mừng đến với thư viện!',
+            'content' => 'Tài khoản của bạn đã được xác minh. Hãy bắt đầu khám phá kho sách của chúng tôi ngay!',
+            'type' => Notification::TYPE_WEB,
+        ]);
+
+        // Generate JWT token for auto-login
+        $token = JWTAuth::fromUser($user);
+
+        return redirect()->away($frontendUrl . '/?verified=1&token=' . $token);
     }
 
     /**
@@ -92,7 +137,7 @@ class AuthController extends Controller
             ], 500);
         }
 
-        $user = JWTAuth::user();
+        $user = JWTAuth::user()->load('rolePermission');
 
         // Check if account is locked
         if ($user->status === 'locked') {
@@ -113,6 +158,9 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'status' => $user->status,
                 'balance' => $user->balance,
+                'permissions' => $user->role === 'librarian' 
+                    ? ($user->rolePermission?->getAllPermissions() ?? [])
+                    : [],
             ],
         ]);
     }
@@ -173,10 +221,8 @@ class AuthController extends Controller
             'total_debt' => $user->total_debt,
         ];
 
-        // Admin can see full CCCD info
-        if ($request->user()->isAdmin() || $request->user()->id === $user->id) {
-            $userData['cccd_number'] = $user->getDecryptedCccdNumber();
-        }
+        // No CCCD required
+
 
         return response()->json($userData);
     }
@@ -189,16 +235,12 @@ class AuthController extends Controller
         $user = JWTAuth::parseToken()->authenticate();
         $data = $request->validated();
 
-        // Handle CCCD image upload
-        if ($request->hasFile('cccd_image')) {
-            // Delete old image
-            if ($user->cccd_image) {
-                Storage::disk('private')->delete($user->cccd_image);
-            }
-            $data['cccd_image'] = $request->file('cccd_image')->store('cccd_images', 'private');
-        }
+        $oldValues = $user->only(['name', 'email', 'phone', 'address', 'dob']);
 
-        $oldValues = $user->only(['name', 'phone', 'address', 'dob', 'cccd_number', 'cccd_image']);
+        // Explicitly handle empty dob
+        if (isset($data['dob']) && empty($data['dob'])) {
+            $data['dob'] = null;
+        }
 
         $user->update($data);
 
@@ -209,7 +251,7 @@ class AuthController extends Controller
             'users',
             $user->id,
             $oldValues,
-            $user->only(['name', 'phone', 'address', 'dob', 'cccd_image']),
+            $user->only(['name', 'email', 'phone', 'address', 'dob']),
             $request->ip(),
             $request->userAgent()
         );
@@ -223,6 +265,7 @@ class AuthController extends Controller
                 'phone' => $user->phone,
                 'address' => $user->address,
                 'dob' => $user->dob,
+                'status' => $user->status,
             ],
         ]);
     }

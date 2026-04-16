@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Book extends Model
 {
     use HasFactory, SoftDeletes;
+ 
+    protected $appends = ['average_rating'];
 
     protected $fillable = [
         'title',
@@ -18,6 +21,7 @@ class Book extends Model
         'publisher',
         'category_id',
         'description',
+        'cover_image',
         'price',
         'daily_fee',
         'is_hot',
@@ -58,9 +62,9 @@ class Book extends Model
         return $this->hasMany(Reservation::class);
     }
 
-    public function reviews(): MorphMany
+    public function reviews(): HasMany
     {
-        return $this->morphMany(Review::class, 'reviewable');
+        return $this->hasMany(Review::class);
     }
 
     // Get daily fee (use book-specific or default)
@@ -134,5 +138,12 @@ class Book extends Model
     {
         return $query->where('in_carousel', true)
             ->orderBy('carousel_order');
+    }
+    public function getCoverImageAttribute($value)
+    {
+        if ($value && !filter_var($value, FILTER_VALIDATE_URL)) {
+            return asset('storage/' . ltrim($value, '/'));
+        }
+        return $value;
     }
 }

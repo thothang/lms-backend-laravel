@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8cafb918352e89842fc39bc25e280484",
+    "content-hash": "063c4ccf6c2bc95c452a07893e1dfbd9",
     "packages": [
         {
             "name": "barryvdh/laravel-dompdf",
@@ -916,6 +916,57 @@
                 "source": "https://github.com/igorw/evenement/tree/v3.0.2"
             },
             "time": "2023-08-08T05:53:35+00:00"
+        },
+        {
+            "name": "filippo-toso/pdf-watermarker",
+            "version": "v1.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/filippotoso/pdf-watermarker.git",
+                "reference": "3365cdf795b1b322397943577aa0e2452ea3ef69"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/filippotoso/pdf-watermarker/zipball/3365cdf795b1b322397943577aa0e2452ea3ef69",
+                "reference": "3365cdf795b1b322397943577aa0e2452ea3ef69",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/support": ">=7.0",
+                "php": ">=7.1.0",
+                "setasign/fpdf": "^1.8",
+                "setasign/fpdi": "^2.3"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "PdfWatermark": "FilippoToso\\PdfWatermarker\\Facades\\PdfWatermarker",
+                        "ImageWatermark": "FilippoToso\\PdfWatermarker\\Facades\\ImageWatermarker"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "FilippoToso\\PdfWatermarker\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Filippo Toso",
+                    "email": "filippo.toso@creativepark.it"
+                }
+            ],
+            "description": "Simple PDF Watermarker with Laravel support",
+            "support": {
+                "issues": "https://github.com/filippotoso/pdf-watermarker/issues",
+                "source": "https://github.com/filippotoso/pdf-watermarker/tree/v1.1.1"
+            },
+            "time": "2024-06-27T05:22:50+00:00"
         },
         {
             "name": "fruitcake/php-cors",
@@ -5041,6 +5092,71 @@
             "time": "2026-03-03T17:31:43+00:00"
         },
         {
+            "name": "sepay/sepay-pg",
+            "version": "1.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/sepayvn/sepay-pg-php.git",
+                "reference": "2c7eb9261794fab4ae854a4e05d7edd86b2879f1"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/sepayvn/sepay-pg-php/zipball/2c7eb9261794fab4ae854a4e05d7edd86b2879f1",
+                "reference": "2c7eb9261794fab4ae854a4e05d7edd86b2879f1",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-json": "*",
+                "guzzlehttp/guzzle": "^7.10",
+                "php": ">=7.4",
+                "psr/log": "^1.1|^2.0|^3.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.87",
+                "mockery/mockery": "^1.6",
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^9.6"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "SePay\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "SePay Team",
+                    "email": "info@sepay.vn",
+                    "role": "Developer"
+                },
+                {
+                    "name": "Ngô Quốc Đạt",
+                    "email": "quocdat@sepay.vn",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Official PHP SDK for SePay Payment Gateway — simple integration for payments, bank transfers, VietQR.",
+            "homepage": "https://sepay.vn",
+            "keywords": [
+                "SePay",
+                "bank-transfer",
+                "gateway",
+                "payment",
+                "vietnam",
+                "vietqr"
+            ],
+            "support": {
+                "issues": "https://github.com/sepayvn/sepay-pg-php/issues",
+                "source": "https://github.com/sepayvn/sepay-pg-php/tree/1.0.0"
+            },
+            "time": "2025-10-13T03:57:01+00:00"
+        },
+        {
             "name": "setasign/fpdf",
             "version": "1.8.2",
             "source": {
@@ -5284,6 +5400,65 @@
                 "source": "https://github.com/stella-maris-solutions/clock/tree/0.1.7"
             },
             "time": "2022-11-25T16:15:06+00:00"
+        },
+        {
+            "name": "swiftmailer/swiftmailer",
+            "version": "v5.4.12",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/swiftmailer/swiftmailer.git",
+                "reference": "181b89f18a90f8925ef805f950d47a7190e9b950"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/swiftmailer/swiftmailer/zipball/181b89f18a90f8925ef805f950d47a7190e9b950",
+                "reference": "181b89f18a90f8925ef805f950d47a7190e9b950",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.3"
+            },
+            "require-dev": {
+                "mockery/mockery": "~0.9.1",
+                "symfony/phpunit-bridge": "~3.2"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "5.4-dev"
+                }
+            },
+            "autoload": {
+                "files": [
+                    "lib/swift_required.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Chris Corbyn"
+                },
+                {
+                    "name": "Fabien Potencier",
+                    "email": "fabien@symfony.com"
+                }
+            ],
+            "description": "Swiftmailer, free feature-rich PHP mailer",
+            "homepage": "https://swiftmailer.symfony.com",
+            "keywords": [
+                "email",
+                "mail",
+                "mailer"
+            ],
+            "support": {
+                "issues": "https://github.com/swiftmailer/swiftmailer/issues",
+                "source": "https://github.com/swiftmailer/swiftmailer/tree/v5.4.12"
+            },
+            "abandoned": "symfony/mailer",
+            "time": "2018-07-31T09:26:32+00:00"
         },
         {
             "name": "symfony/clock",
@@ -7785,6 +7960,77 @@
                 }
             ],
             "time": "2026-03-30T13:44:50+00:00"
+        },
+        {
+            "name": "tecnickcom/tcpdf",
+            "version": "6.11.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/tecnickcom/TCPDF.git",
+                "reference": "e1e2ade18e574e963473f53271591edd8c0033ec"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/tecnickcom/TCPDF/zipball/e1e2ade18e574e963473f53271591edd8c0033ec",
+                "reference": "e1e2ade18e574e963473f53271591edd8c0033ec",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "php": ">=7.1.0"
+            },
+            "type": "library",
+            "autoload": {
+                "classmap": [
+                    "config",
+                    "include",
+                    "tcpdf.php",
+                    "tcpdf_barcodes_1d.php",
+                    "tcpdf_barcodes_2d.php",
+                    "include/tcpdf_colors.php",
+                    "include/tcpdf_filters.php",
+                    "include/tcpdf_font_data.php",
+                    "include/tcpdf_fonts.php",
+                    "include/tcpdf_images.php",
+                    "include/tcpdf_static.php",
+                    "include/barcodes/datamatrix.php",
+                    "include/barcodes/pdf417.php",
+                    "include/barcodes/qrcode.php"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "LGPL-3.0-or-later"
+            ],
+            "authors": [
+                {
+                    "name": "Nicola Asuni",
+                    "email": "info@tecnick.com",
+                    "role": "lead"
+                }
+            ],
+            "description": "TCPDF is a PHP class for generating PDF documents and barcodes.",
+            "homepage": "http://www.tcpdf.org/",
+            "keywords": [
+                "PDFD32000-2008",
+                "TCPDF",
+                "barcodes",
+                "datamatrix",
+                "pdf",
+                "pdf417",
+                "qrcode"
+            ],
+            "support": {
+                "issues": "https://github.com/tecnickcom/TCPDF/issues",
+                "source": "https://github.com/tecnickcom/TCPDF/tree/6.11.2"
+            },
+            "funding": [
+                {
+                    "url": "https://www.paypal.com/donate/?hosted_button_id=NZUEC5XS8MFBJ",
+                    "type": "custom"
+                }
+            ],
+            "time": "2026-03-03T08:58:10+00:00"
         },
         {
             "name": "thecodingmachine/safe",

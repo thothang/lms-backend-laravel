@@ -8,6 +8,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Fix duplicate topups command
+Artisan::command('fix:duplicate-topups', function () {
+    $this->call('app:fix-duplicate-topups');
+})->purpose('Fix duplicate topup transactions');
+
 // Schedule Background Jobs
 Schedule::command('reservations:process-expired')->hourly();
 Schedule::command('borrows:check-overdue')->dailyAt('00:00');

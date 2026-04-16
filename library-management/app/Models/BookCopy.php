@@ -33,7 +33,7 @@ class BookCopy extends Model
 
     public function borrowRecord(): HasOne
     {
-        return $this->hasOne(BorrowRecord::class);
+        return $this->hasOne(BorrowRecord::class, 'copy_id');
     }
 
     // Check if copy is available

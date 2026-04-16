@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Ebook;
-use App\Models\WithdrawalRequest;
 use App\Models\AuditLog;
+use App\Models\Ebook;
+use App\Models\EbookPurchase;
+use App\Models\Notification;
+use App\Models\User;
+use App\Models\WithdrawalRequest;
 use App\Services\EbookService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,7 +31,9 @@ class AuthorEbookController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
+            'category_id' => 'required|exists:book_categories,id',
             'description' => 'nullable|string',
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
             'price' => 'required_without:is_free|numeric|min:0',
             'is_free' => 'boolean',
             'file' => 'required|file|mimes:pdf|max:51200', // max 50MB
@@ -50,6 +55,17 @@ class AuthorEbookController extends Controller
             ], 422);
         }
 
+        // Notify admin about new ebook submission
+        $admin = \App\Models\User::where('role', 'admin')->first();
+        if ($admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title' => 'Ebook mới chờ duyệt',
+                'content' => "Tác giả {$user->name} đã gửi ebook mới '{$request->title}' chờ được duyệt.",
+                'type' => Notification::TYPE_WEB,
+            ]);
+        }
+
         return response()->json([
             'message' => 'Ebook đã được gửi đi duyệt',
             'ebook_id' => $result['ebook_id'],
@@ -64,13 +80,27 @@ class AuthorEbookController extends Controller
     {
         $user = JWTAuth::parseToken()->authenticate();
 
+        $baseUrl = config('app.url');
+
         $ebooks = Ebook::where('author_id', $user->id)
+            ->with('category:id,name')
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function ($ebook) {
+            ->map(function ($ebook) use ($baseUrl) {
+                // Ensure full URL for cover image
+                $coverImage = $ebook->cover_image;
+                if ($coverImage && !str_starts_with($coverImage, 'http')) {
+                    $coverImage = rtrim($baseUrl, '/') . '/' . ltrim($coverImage, '/');
+                }
+
                 return [
                     'id' => $ebook->id,
                     'title' => $ebook->title,
+                    'cover_image' => $coverImage,
+                    'category' => $ebook->category ? [
+                        'id' => $ebook->category->id,
+                        'name' => $ebook->category->name,
+                    ] : null,
                     'price' => $ebook->price,
                     'is_free' => $ebook->is_free,
                     'status' => $ebook->status,
@@ -91,7 +121,9 @@ class AuthorEbookController extends Controller
     {
         $request->validate([
             'title' => 'sometimes|string|max:255',
+            'category_id' => 'sometimes|exists:book_categories,id',
             'description' => 'nullable|string',
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:10240',
             'price' => 'sometimes|numeric|min:0',
             'is_free' => 'sometimes|boolean',
         ]);
@@ -114,7 +146,15 @@ class AuthorEbookController extends Controller
             ], 422);
         }
 
-        $ebook->update($request->only(['title', 'description', 'price', 'is_free']));
+        $updateData = $request->only(['title', 'category_id', 'description', 'price', 'is_free']);
+        
+        if ($request->hasFile('cover_image')) {
+            $updateData['cover_image'] = $request->file('cover_image')->store('covers/ebooks', 'public');
+        } elseif ($request->filled('cover_image')) {
+            $updateData['cover_image'] = $request->cover_image;
+        }
+
+        $ebook->update($updateData);
 
         return response()->json([
             'message' => 'Cập nhật thành công',
@@ -140,6 +180,60 @@ class AuthorEbookController extends Controller
             'total_earned' => $user->total_earned,
             'min_withdrawal' => config('library.min_withdrawal_amount', 100000),
             'can_withdraw' => $user->earnings_balance >= config('library.min_withdrawal_amount', 100000),
+        ]);
+    }
+
+    /**
+     * Get detailed earnings from each purchase
+     */
+    public function earningsHistory(Request $request): JsonResponse
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        if (!$user->isAuthor()) {
+            return response()->json([
+                'error' => 'Bạn cần là tác giả để xem doanh thu',
+            ], 403);
+        }
+
+        $authorPercent = config('library.ebook_author_revenue_percent', 60);
+
+        // Get purchases for author's ebooks
+        $purchases = EbookPurchase::whereHas('ebook', function ($query) use ($user) {
+                $query->where('author_id', $user->id);
+            })
+            ->with(['ebook:id,title,price', 'user:id,name'])
+            ->orderBy('purchase_date', 'desc')
+            ->paginate(20);
+
+        $data = $purchases->getCollection()->map(function ($purchase) use ($authorPercent) {
+            $totalAmount = (float) $purchase->amount;
+            $authorEarnings = ($totalAmount * $authorPercent) / 100;
+            $platformFee = $totalAmount - $authorEarnings;
+
+            return [
+                'id' => $purchase->id,
+                'ebook_title' => $purchase->ebook->title,
+                'buyer_name' => $purchase->user->name,
+                'purchase_date' => $purchase->purchase_date->format('Y-m-d H:i'),
+                'total_amount' => $totalAmount,
+                'platform_fee' => round($platformFee, 2),
+                'author_earnings' => round($authorEarnings, 2),
+                'author_percent' => $authorPercent,
+            ];
+        });
+
+        return response()->json([
+            'author_percent' => $authorPercent,
+            'total_earned' => $user->total_earned,
+            'balance' => $user->earnings_balance,
+            'data' => $data,
+            'pagination' => [
+                'current_page' => $purchases->currentPage(),
+                'last_page' => $purchases->lastPage(),
+                'per_page' => $purchases->perPage(),
+                'total' => $purchases->total(),
+            ],
         ]);
     }
 
@@ -173,7 +267,9 @@ class AuthorEbookController extends Controller
             ], 422);
         }
 
-        // Check balance
+        // Check balance with row lock to prevent race condition
+        $user = User::lockForUpdate()->find($user->id);
+        
         if ($user->earnings_balance < $amount) {
             return response()->json([
                 'error' => 'Số dư không đủ',
@@ -181,41 +277,138 @@ class AuthorEbookController extends Controller
         }
 
         // Check withdrawal threshold
-        $thresholdPercent = config('library.author_withdrawal_threshold_percent', 70);
-        $requiresApproval = ($amount / $user->total_earned) > ($thresholdPercent / 100);
+        // All withdrawals require admin approval - always set to pending
+        $requiresApproval = true;
 
-        // Deduct from earnings_balance
-        $user->subtractEarnings($amount);
+        DB::beginTransaction();
+        try {
+            // Create withdrawal request first
+            $withdrawal = WithdrawalRequest::create([
+                'author_id' => $user->id,
+                'amount' => $amount,
+                'bank_account_info' => [
+                    'bank_account' => $request->bank_account,
+                    'bank_name' => $request->bank_name,
+                    'account_holder' => $request->account_holder,
+                ],
+                'status' => 'pending',
+            ]);
 
-        // Create withdrawal request
-        $withdrawal = WithdrawalRequest::create([
-            'author_id' => $user->id,
-            'amount' => $amount,
-            'bank_account_info' => [
-                'bank_account' => $request->bank_account,
-                'bank_name' => $request->bank_name,
-                'account_holder' => $request->account_holder,
-            ],
-            'status' => $requiresApproval ? 'pending' : 'approved',
-        ]);
+            // Deduct from earnings_balance only after withdrawal request created
+            $user->subtractEarnings($amount);
+
+            // Log action
+            AuditLog::log(
+                $user->id,
+                'WITHDRAWAL_REQUEST',
+                'withdrawal_requests',
+                $withdrawal->id,
+                null,
+                ['amount' => $amount, 'status' => 'pending']
+            );
+
+            // Create notification for author
+            Notification::create([
+                'user_id' => $user->id,
+                'title' => 'Yêu cầu rút tiền',
+                'content' => "Yêu cầu rút " . number_format($amount) . " VNĐ đang chờ admin duyệt.",
+                'type' => Notification::TYPE_WEB,
+            ]);
+
+            // Notify admin about new withdrawal request
+            $admin = \App\Models\User::where('role', 'admin')->first();
+            if ($admin) {
+                Notification::create([
+                    'user_id' => $admin->id,
+                    'title' => 'Yêu cầu rút tiền mới',
+                    'content' => "Tác giả {$user->name} yêu cầu rút " . number_format($amount) . " VNĐ.",
+                    'type' => Notification::TYPE_WEB,
+                ]);
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Yêu cầu rút tiền đã được gửi, chờ admin duyệt',
+                'withdrawal_id' => $withdrawal->id,
+                'amount' => $amount,
+                'status' => $withdrawal->status,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Withdrawal request failed', [
+                'user_id' => $user->id,
+                'amount' => $amount,
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'error' => 'Không thể tạo yêu cầu rút tiền. Vui lòng thử lại.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get withdrawal history for author
+     */
+    public function withdrawalHistory(Request $request): JsonResponse
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        $query = WithdrawalRequest::where('author_id', $user->id);
+
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $requests = $query->orderBy('created_at', 'desc')->paginate(20);
+
+        return response()->json($requests);
+    }
+
+    /**
+     * Soft delete ebook
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        $ebook = Ebook::where('id', $id)
+            ->where('author_id', $user->id)
+            ->first();
+
+        if (!$ebook) {
+            return response()->json([
+                'error' => 'Ebook không tồn tại hoặc bạn không có quyền xóa',
+            ], 404);
+        }
+
+        // Soft delete ebook
+        $ebook->delete();
+
+        // Notify admin
+        $admin = User::where('role', 'admin')->first();
+        if ($admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title' => 'Tác giả xóa ebook',
+                'content' => "Tác giả {$user->name} đã xóa ebook '{$ebook->title}' (ID: {$ebook->id}).",
+                'type' => Notification::TYPE_WEB,
+            ]);
+        }
 
         // Log action
         AuditLog::log(
             $user->id,
-            'WITHDRAWAL_REQUEST',
-            'withdrawal_requests',
-            $withdrawal->id,
-            null,
-            ['amount' => $amount, 'requires_approval' => $requiresApproval]
+            'DELETE_EBOOK',
+            'ebooks',
+            $ebook->id,
+            ['title' => $ebook->title, 'status' => $ebook->status],
+            ['deleted' => true]
         );
 
         return response()->json([
-            'message' => $requiresApproval 
-                ? 'Yêu cầu rút tiền đã được gửi, chờ admin duyệt'
-                : 'Yêu cầu rút tiền đã được xử lý',
-            'withdrawal_id' => $withdrawal->id,
-            'amount' => $amount,
-            'status' => $withdrawal->status,
+            'message' => 'Ebook đã được xóa thành công',
         ]);
     }
 }

@@ -16,13 +16,15 @@ class BorrowRecord extends Model
         'user_id',
         'guest_name',
         'guest_phone',
-        'guest_cccd',
         'copy_id',
         'borrow_date',
+        'actual_pickup_date',
         'due_date',
         'return_date',
         'daily_fee_applied',
         'deposit_amount',
+        'prepaid_amount',
+        'actual_fee',
         'renew_count',
         'status',
     ];
@@ -30,11 +32,14 @@ class BorrowRecord extends Model
     protected function casts(): array
     {
         return [
-            'borrow_date' => 'date',
-            'due_date' => 'date',
-            'return_date' => 'date',
+            'borrow_date' => 'datetime',
+            'actual_pickup_date' => 'datetime',
+            'due_date' => 'datetime',
+            'return_date' => 'datetime',
             'daily_fee_applied' => 'decimal:2',
             'deposit_amount' => 'decimal:2',
+            'prepaid_amount' => 'decimal:2',
+            'actual_fee' => 'decimal:2',
             'renew_count' => 'integer',
         ];
     }
@@ -55,34 +60,41 @@ class BorrowRecord extends Model
         return $this->hasMany(UserDebt::class);
     }
 
-    // Calculate borrow fee based on actual days
+    // Calculate borrow fee based on calendar days
     public function calculateFee(): array
     {
-        $returnDate = $this->return_date ?? Carbon::now();
-        $totalDays = $this->borrow_date->diffInDays($returnDate) + 1;
+        $borrowDate = $this->borrow_date->startOfDay();
+        $returnDate = ($this->return_date ?? Carbon::now())->startOfDay();
+        $dueDate = $this->due_date->startOfDay();
+
+        // Total calendar days (Monday to Monday = 1 day, Monday to Tuesday = 2 days)
+        $totalDays = $borrowDate->diffInDays($returnDate) + 1;
         
-        $overdueDays = max(0, Carbon::now()->diffInDays($this->due_date, false));
-        // Calculate overdue days
-        if ($returnDate->greaterThan($this->due_date)) {
-            $overdueDays = $this->due_date->diffInDays($returnDate);
-        } else {
-            $overdueDays = 0;
+        // Calculate overdue days (Calendar days)
+        $overdueDays = 0;
+        if ($returnDate->greaterThan($dueDate)) {
+            $overdueDays = $dueDate->diffInDays($returnDate);
         }
         
-        $onTimeDays = $totalDays - $overdueDays;
+        $onTimeDays = max(1, $totalDays - $overdueDays);
         $overdueFeeMultiplier = config('library.overdue_penalty_multiplier', 1.5);
         
-        $borrowFee = ($onTimeDays * $this->daily_fee_applied) 
-                   + ($overdueDays * $this->daily_fee_applied * $overdueFeeMultiplier);
+        // Ensure integer fees for VNĐ
+        $borrowFee = round(($onTimeDays * (float)$this->daily_fee_applied) 
+                   + ($overdueDays * (float)$this->daily_fee_applied * $overdueFeeMultiplier));
+
+        $totalHeld = round((float)$this->deposit_amount + (float)$this->prepaid_amount);
 
         return [
             'total_days' => $totalDays,
             'on_time_days' => $onTimeDays,
             'overdue_days' => $overdueDays,
-            'borrow_fee' => $borrowFee,
-            'deposit' => $this->deposit_amount,
-            'refund' => max(0, $this->deposit_amount - $borrowFee),
-            'extra_amount_needed' => max(0, $borrowFee - $this->deposit_amount),
+            'borrow_fee' => (float)$borrowFee,
+            'deposit' => (float)$this->deposit_amount,
+            'prepaid' => (float)$this->prepaid_amount,
+            'total_held' => (float)$totalHeld,
+            'refund' => (float)max(0, $totalHeld - $borrowFee),
+            'extra_amount_needed' => (float)max(0, $borrowFee - $totalHeld),
         ];
     }
 
@@ -115,16 +127,9 @@ class BorrowRecord extends Model
             return [false, "Đã gia hạn tối đa {$maxRenew} lần"];
         }
 
-        // Check if there are pending reservations
+        // Check if there are ANY pending reservations
         $hasReservation = $this->copy->book->reservations()
             ->where('status', 'pending')
-            ->where('queue_order', '<', function ($query) {
-                $query->select('queue_order')
-                    ->from('reservations')
-                    ->whereColumn('book_id', 'reservations.book_id')
-                    ->where('user_id', $this->user_id)
-                    ->where('status', 'pending');
-            })
             ->exists();
 
         if ($hasReservation) {
@@ -155,5 +160,23 @@ class BorrowRecord extends Model
     public function scopeReturned($query)
     {
         return $query->where('status', 'returned');
+    }
+
+    // Scope: Pending pickup (chờ user đến nhận sách)
+    public function scopePendingPickup($query)
+    {
+        return $query->where('status', 'pending_pickup');
+    }
+
+    // Check if can be picked up
+    public function canBePickedUp(): bool
+    {
+        return $this->status === 'pending_pickup';
+    }
+
+    // Check if can be returned (chỉ khi đã active)
+    public function canBeReturned(): bool
+    {
+        return $this->status === 'active';
     }
 }

@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string('title');
             $table->foreignId('author_id')->constrained('users')->onDelete('cascade');
             $table->text('description')->nullable();
+            $table->string('cover_image')->nullable();
             $table->decimal('price', 12, 2);
             $table->string('file_path'); // Private storage
             $table->integer('free_preview_pages')->default(0);

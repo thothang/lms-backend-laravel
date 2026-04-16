@@ -36,10 +36,12 @@ return [
     ],
 
     'sepay' => [
-        'api_key' => env('SEPAY_API_KEY'),
+        'merchant_id' => env('SEPAY_MERCHANT_ID'),
         'secret_key' => env('SEPAY_SECRET_KEY'),
-        'webhook_secret' => env('SEPAY_WEBHOOK_SECRET'),
-        'base_url' => env('SEPAY_BASE_URL', 'https://sandbox.sepay.com/api/v1'),
+        'env' => env('SEPAY_ENV', 'sandbox'),
     ],
+
+    // Frontend URL for callbacks
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
 
 ];

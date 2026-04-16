@@ -57,9 +57,7 @@ class BookController extends Controller
         $perPage = $request->limit ?? 20;
         $books = $query->paginate($perPage);
 
-        // Add average rating to each book
         $books->getCollection()->transform(function ($book) {
-            $book->average_rating = $book->average_rating;
             return $book;
         });
 
@@ -75,11 +73,7 @@ class BookController extends Controller
             ->with('category')
             ->orderBy('created_at', 'desc')
             ->limit(10)
-            ->get()
-            ->map(function ($book) {
-                $book->average_rating = $book->average_rating;
-                return $book;
-            });
+            ->get();
 
         return response()->json([
             'data' => $books,
@@ -95,11 +89,7 @@ class BookController extends Controller
             ->with('category')
             ->orderBy('created_at', 'desc')
             ->limit(10)
-            ->get()
-            ->map(function ($book) {
-                $book->average_rating = $book->average_rating;
-                return $book;
-            });
+            ->get();
 
         return response()->json([
             'data' => $books,
@@ -113,11 +103,7 @@ class BookController extends Controller
     {
         $books = Book::carousel()
             ->with('category')
-            ->get()
-            ->map(function ($book) {
-                $book->average_rating = $book->average_rating;
-                return $book;
-            });
+            ->get();
 
         return response()->json([
             'data' => $books,
@@ -139,7 +125,11 @@ class BookController extends Controller
                     ->orderBy('created_at', 'desc')
                     ->limit(10);
             },
-        ])->find($id);
+        ])
+        ->withCount(['reservations' => function ($query) {
+            $query->where('status', 'pending');
+        }])
+        ->find($id);
 
         if (!$book) {
             return response()->json([
@@ -147,7 +137,6 @@ class BookController extends Controller
             ], 404);
         }
 
-        $book->average_rating = $book->average_rating;
         $book->total_reviews = $book->reviews->count();
 
         return response()->json($book);

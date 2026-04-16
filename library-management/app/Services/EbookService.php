@@ -37,13 +37,24 @@ class EbookService
         }
 
         // Store file privately
-        $path = $file->store('ebooks/' . $author->id, 'private');
+        $path = $file->store('ebooks/' . $author->id, 'local');
+
+        $coverImagePath = null;
+        if (isset($data['cover_image'])) {
+            if ($data['cover_image'] instanceof \Illuminate\Http\UploadedFile) {
+                $coverImagePath = $data['cover_image']->store('covers/ebooks', 'public');
+            } else {
+                $coverImagePath = $data['cover_image'];
+            }
+        }
 
         // Create ebook record
         $ebook = Ebook::create([
             'title' => $data['title'],
             'author_id' => $author->id,
+            'category_id' => $data['category_id'],
             'description' => $data['description'] ?? null,
+            'cover_image' => $coverImagePath,
             'price' => $data['price'] ?? 0,
             'file_path' => $path,
             'free_preview_pages' => $data['free_preview_pages'] ?? 0,
@@ -115,7 +126,7 @@ class EbookService
     {
         // Delete file
         if ($ebook->file_path) {
-            Storage::disk('private')->delete($ebook->file_path);
+            Storage::disk('local')->delete($ebook->file_path);
         }
 
         $ebook->delete();

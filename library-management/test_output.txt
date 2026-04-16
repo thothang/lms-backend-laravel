@@ -1,0 +1,22 @@
+﻿=== Callback URLs ===
+Array
+(
+    [success] => https://nonperverted-superable-moon.ngrok-free.dev/payment/success
+    [error] => https://nonperverted-superable-moon.ngrok-free.dev/payment/error
+    [cancel] => https://nonperverted-superable-moon.ngrok-free.dev/payment/cancel
+)
+
+=== Form HTML ===
+<form method="POST" action="https://pay-sandbox.sepay.vn/v1/checkout/init">
+    <input type="hidden" name="merchant" value="SP-TEST-TN462244">
+    <input type="hidden" name="currency" value="VND">
+    <input type="hidden" name="order_amount" value="50000">
+    <input type="hidden" name="operation" value="PURCHASE">
+    <input type="hidden" name="order_description" value="Thanh to├ín ─æ╞ín h├áng TEST-001">
+    <input type="hidden" name="order_invoice_number" value="TEST-001">
+    <input type="hidden" name="success_url" value="https://nonperverted-superable-moon.ngrok-free.dev/payment/success">
+    <input type="hidden" name="error_url" value="https://nonperverted-superable-moon.ngrok-free.dev/payment/error">
+    <input type="hidden" name="cancel_url" value="https://nonperverted-superable-moon.ngrok-free.dev/payment/cancel">
+    <input type="hidden" name="signature" value="n5PWszBoXURZABQqeCSX+ZxLbqyNbD1vfTfAve6d72k=">
+    <button type="submit">Proceed to Payment</button>
+</form>

@@ -41,7 +41,7 @@ class AuditLog extends Model
 
     // Create a new audit log entry
     public static function log(
-        int $userId,
+        ?int $userId,
         string $action,
         string $tableName,
         int $recordId,

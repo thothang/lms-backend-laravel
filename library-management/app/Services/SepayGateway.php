@@ -64,20 +64,33 @@ class SepayGateway
 
     /**
      * Verify webhook signature
+     * Uses HMAC-SHA256 for secure signature verification
      */
-    public function verifySignature(array $payload): bool
+    public function verifySignature(array $payload, string $providedSignature): bool
     {
-        if (!isset($payload['signature'])) {
+        if (empty($providedSignature)) {
             return false;
         }
 
-        $signature = $payload['signature'];
+        // Remove signature from payload
         unset($payload['signature']);
 
-        // Calculate expected signature
-        $expected = md5(json_encode($payload) . $this->secretKey);
+        // Sort payload by key for consistent hashing
+        ksort($payload);
 
-        return hash_equals($expected, $signature);
+        // Build canonical string
+        $canonicalString = http_build_query($payload, '', '&', PHP_QUERY_RFC3986);
+        
+        // Calculate HMAC-SHA256 signature
+        $expected = hash_hmac('sha256', $canonicalString, $this->secretKey);
+
+        \Log::debug('Signature verification', [
+            'provided' => $providedSignature,
+            'expected' => $expected,
+            'payload' => $payload
+        ]);
+
+        return hash_equals($expected, $providedSignature);
     }
 
     /**

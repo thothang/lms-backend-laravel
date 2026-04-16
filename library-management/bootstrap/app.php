@@ -7,11 +7,14 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Tymon\JWTAuth\Exceptions\TokenExpiredException;
 use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Exceptions\TokenBlacklistedException;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\CorsMiddleware;
+use App\Http\Middleware\ApiRateLimiter;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -24,12 +27,25 @@ return Application::configure(basePath: dirname(__DIR__))
         // Disable guest redirect for API
         $middleware->redirectGuestsTo(fn () => null);
 
+        // Add CORS + CSP middleware globally to all requests
+        $middleware->append(CorsMiddleware::class);
+
         // Register role middleware alias
         $middleware->alias([
             'role' => CheckRole::class,
+            'throttle' => ApiRateLimiter::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Handle 429 Too Many Requests
+        $exceptions->render(function (TooManyRequestsHttpException $e, Request $request) {
+            return response()->json([
+                'error' => 'Too many requests',
+                'message' => 'Quá nhiều yêu cầu. Vui lòng thử lại sau.',
+                'retry_after' => $e->getHeaders()['Retry-After'] ?? 60,
+            ], 429);
+        });
+
         // Handle JWT Token Expired
         $exceptions->render(function (TokenExpiredException $e, Request $request) {
             return response()->json([

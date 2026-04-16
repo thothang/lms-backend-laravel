@@ -12,9 +12,10 @@ class Message extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'from_user_id',
-        'to_user_id',
-        'message',
+        'sender_id',
+        'receiver_id',
+        'title',
+        'content',
         'is_read',
     ];
 
@@ -26,14 +27,14 @@ class Message extends Model
     }
 
     // Relationships
-    public function fromUser(): BelongsTo
+    public function sender(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'from_user_id');
+        return $this->belongsTo(User::class, 'sender_id');
     }
 
-    public function toUser(): BelongsTo
+    public function receiver(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'to_user_id');
+        return $this->belongsTo(User::class, 'receiver_id');
     }
 
     // Mark as read

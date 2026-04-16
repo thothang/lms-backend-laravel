@@ -23,6 +23,12 @@ class Reservation extends Model
         'queue_order',
     ];
 
+    protected $appends = [
+        'queue_position',
+        'deposit_fee',
+        'expected_days',
+    ];
+
     protected function casts(): array
     {
         return [
@@ -74,6 +80,18 @@ class Reservation extends Model
     public function getQueuePositionAttribute(): int
     {
         return $this->queue_order;
+    }
+
+    // Get deposit fee (alias for fee_paid)
+    public function getDepositFeeAttribute(): float
+    {
+        return (float) $this->fee_paid;
+    }
+
+    // Get expected days (alias for expected_borrow_days)
+    public function getExpectedDaysAttribute(): int
+    {
+        return (int) $this->expected_borrow_days;
     }
 
     // Scopes

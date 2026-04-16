@@ -46,18 +46,23 @@ class BorrowController extends Controller
     /**
      * Borrow a book
      */
-    public function borrow(Request $request, int $copyId): JsonResponse
+    public function borrow(Request $request, int $bookId): JsonResponse
     {
         $user = JWTAuth::parseToken()->authenticate();
-        $copy = BookCopy::with('book')->find($copyId);
+        
+        // Find the first available copy of the book
+        $copy = BookCopy::where('book_id', $bookId)
+            ->where('status', 'available')
+            ->first();
 
         if (!$copy) {
             return response()->json([
-                'error' => 'Bản sao sách không tồn tại',
-            ], 404);
+                'error' => 'Sách không còn bản sao khả dụng',
+            ], 422);
         }
 
-        $result = $this->borrowService->borrow($user, $copy);
+        $days = $request->input('days', 9);
+        $result = $this->borrowService->borrow($user, $copy, $days);
 
         if (!$result['success']) {
             return response()->json([
@@ -233,6 +238,19 @@ class BorrowController extends Controller
             'comment' => $request->comment,
         ]);
 
+        // Get book info for notification
+        $book = \App\Models\Book::find($bookId);
+
+        // Notify author/librarian about new review
+        if ($book) {
+            Notification::create([
+                'user_id' => $book->author_id,
+                'title' => 'Có đánh giá mới cho sách',
+                'content' => "Sách '{$book->title}' đã nhận được đánh giá {$request->rating} sao từ {$user->name}.",
+                'type' => Notification::TYPE_WEB,
+            ]);
+        }
+
         return response()->json([
             'message' => 'Đánh giá thành công',
             'review' => $review,
@@ -279,6 +297,19 @@ class BorrowController extends Controller
             'rating' => $request->rating,
             'comment' => $request->comment,
         ]);
+
+        // Get ebook info for notification
+        $ebook = \App\Models\Ebook::find($ebookId);
+
+        // Notify author about new review
+        if ($ebook) {
+            Notification::create([
+                'user_id' => $ebook->author_id,
+                'title' => 'Có đánh giá mới cho ebook',
+                'content' => "Ebook '{$ebook->title}' đã nhận được đánh giá {$request->rating} sao từ {$user->name}.",
+                'type' => Notification::TYPE_WEB,
+            ]);
+        }
 
         return response()->json([
             'message' => 'Đánh giá thành công',
@@ -335,6 +366,17 @@ class BorrowController extends Controller
                 'days' => $days,
             ],
         ]);
+
+        // Notify admin about library ticket purchase
+        $admin = \App\Models\User::where('role', 'admin')->first();
+        if ($admin) {
+            Notification::create([
+                'user_id' => $admin->id,
+                'title' => 'Vé thư viện được mua',
+                'content' => "Người dùng {$user->name} đã mua vé thư viện {$days} ngày với số tiền " . number_format($amount) . " VNĐ.",
+                'type' => Notification::TYPE_WEB,
+            ]);
+        }
 
         return response()->json([
             'message' => 'Mua vé thư viện thành công',

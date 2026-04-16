@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\SearchController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,13 +29,16 @@ use App\Http\Controllers\Api\SettingController;
 // PUBLIC ROUTES (No Authentication Required)
 // ============================================
 
-// Authentication
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+// Authentication - Rate limited (5 attempts/min)
+Route::middleware('throttle:auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+});
+Route::get('/verify-email/{token}', [AuthController::class, 'verifyEmail']);
 
-// Books (Public)
+// Books (Public) - Default rate limit (120/min)
 Route::get('/books', [BookController::class, 'index']);
 Route::get('/books/hot', [BookController::class, 'getHot']);
 Route::get('/books/featured', [BookController::class, 'getFeatured']);
@@ -42,12 +46,22 @@ Route::get('/books/carousel', [BookController::class, 'getCarousel']);
 Route::get('/books/{id}', [BookController::class, 'show']);
 Route::get('/categories', [BookController::class, 'categories']);
 
-// Ebooks (Public - metadata only)
+// Search - Rate limited (30/min)
+Route::middleware('throttle:search')->group(function () {
+    Route::get('/search', [SearchController::class, 'index']);
+});
+
+// Ebooks (Public - metadata only) - Default rate limit
 Route::get('/ebooks', [EbookController::class, 'index']);
+Route::get('/ebooks/carousel', [EbookController::class, 'carousel']);
+Route::get('/ebooks/hot', [EbookController::class, 'hot']);
+Route::get('/ebooks/featured', [EbookController::class, 'featured']);
 Route::get('/ebooks/{id}', [EbookController::class, 'show']);
 
-// Sepay Callback (Webhook - no auth)
-Route::post('/sepay-callback', [PaymentController::class, 'sepayCallback']);
+// SePay IPN Callback (Webhook - no auth) - Strict rate limit (15/min)
+Route::middleware('throttle:strict')->group(function () {
+    Route::post('/sepay/ipn', [PaymentController::class, 'ipn']);
+});
 
 
 // ============================================
@@ -65,26 +79,32 @@ Route::middleware('auth:api')->group(function () {
 
     // Borrow Management
     Route::get('/my-borrows', [BorrowController::class, 'myBorrows']);
-    Route::post('/borrow/{copyId}', [BorrowController::class, 'borrow']);
-    Route::post('/return/{borrowId}', [BorrowController::class, 'returnBook']);
-    Route::post('/renew/{borrowId}', [BorrowController::class, 'renew']);
+    Route::post('/borrow/{bookId}', [BorrowController::class, 'borrow']);
+    Route::post('/borrow/{borrowId}/return', [BorrowController::class, 'returnBook']);
+    Route::post('/borrow/{borrowId}/renew', [BorrowController::class, 'renew']);
     
     // Reservations
     Route::get('/my-reservations', [BorrowController::class, 'myReservations']);
-    Route::post('/reserve/{bookId}', [BorrowController::class, 'reserve']);
+    Route::post('/reservations/{bookId}', [BorrowController::class, 'reserve']);
     Route::delete('/reservation/{id}', [BorrowController::class, 'cancelReservation']);
 
     // Ebook User Actions
     Route::get('/my-ebooks', [EbookController::class, 'myEbooks']);
     Route::post('/ebooks/{id}/purchase', [EbookController::class, 'purchase']);
+    Route::get('/ebooks/{id}/access', [EbookController::class, 'access']);
     Route::get('/ebooks/{id}/read', [EbookController::class, 'read']);
+    Route::get('/ebooks/{id}/preview', [EbookController::class, 'preview']);
 
     // Reviews
     Route::post('/reviews/book/{bookId}', [BorrowController::class, 'reviewBook']);
     Route::post('/reviews/ebook/{ebookId}', [BorrowController::class, 'reviewEbook']);
 
     // Payment
-    Route::post('/deposit', [PaymentController::class, 'deposit']);
+    Route::post('/deposit', [PaymentController::class, 'createDepositPayment']);
+    Route::post('/topup', [PaymentController::class, 'createTopupPayment']);
+    Route::post('/topup/confirm', [PaymentController::class, 'confirmTopup']); // Direct confirm for sandbox testing
+    Route::post('/fine', [PaymentController::class, 'createFinePayment']);
+    Route::get('/payments/history', [PaymentController::class, 'getHistory']);
 
     // Library Ticket
     Route::post('/buy-library-ticket', [BorrowController::class, 'buyLibraryTicket']);
@@ -107,7 +127,10 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/ebooks', [AuthorEbookController::class, 'index']);
         Route::put('/ebooks/{id}', [AuthorEbookController::class, 'update']);
         Route::get('/earnings', [AuthorEbookController::class, 'earnings']);
+        Route::get('/earnings-history', [AuthorEbookController::class, 'earningsHistory']);
         Route::post('/withdraw', [AuthorEbookController::class, 'withdraw']);
+        Route::get('/withdraw-history', [AuthorEbookController::class, 'withdrawalHistory']);
+        Route::delete('/ebooks/{id}', [AuthorEbookController::class, 'destroy']);
     });
 
 
@@ -122,6 +145,24 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/books/{id}/copies', [LibrarianController::class, 'addCopy']);
         Route::delete('/copies/{id}', [LibrarianController::class, 'deleteCopy']);
 
+        // Borrow Records
+        Route::get('/borrows', [LibrarianController::class, 'getBorrows']);
+        Route::get('/borrows/pending-pickup', [LibrarianController::class, 'pendingPickups']);
+        Route::post('/borrows/{id}/confirm-pickup', [LibrarianController::class, 'confirmPickup']);
+        Route::post('/borrows/{id}/confirm-return', [LibrarianController::class, 'confirmReturn']);
+        Route::post('/borrows/{id}/cancel-pickup', [LibrarianController::class, 'cancelPickup']);
+
+        // Ebook Upload (revenue goes to admin)
+        Route::post('/ebooks', [LibrarianController::class, 'uploadEbook']);
+
+        // Ebook Management (Admin & Librarian)
+        Route::get('/ebooks/all', [EbookController::class, 'getAll']);
+        Route::put('/ebooks/{id}', [EbookController::class, 'update']);
+        Route::delete('/ebooks/{id}', [EbookController::class, 'destroy']);
+        Route::get('/ebooks/trashed', [EbookController::class, 'trashed']);
+        Route::post('/ebooks/{id}/restore', [EbookController::class, 'restore']);
+        Route::delete('/ebooks/{id}/force', [EbookController::class, 'forceDelete']);
+
         // Offline Borrow/Return
         Route::post('/borrow/offline', [LibrarianController::class, 'borrowOffline']);
         Route::post('/return/{borrowId}', [LibrarianController::class, 'returnOffline']);
@@ -133,11 +174,29 @@ Route::middleware('auth:api')->group(function () {
         // Lost Books
         Route::post('/books/{copyId}/mark-lost', [LibrarianController::class, 'markLost']);
 
-        // CCCD Verification
-        Route::put('/users/{id}/verify-cccd', [LibrarianController::class, 'verifyCccd']);
-
         // Hot Books Management
         Route::post('/settings/books/hot', [LibrarianController::class, 'setHotBooks']);
+        Route::post('/settings/ebooks/hot', [EbookController::class, 'setHotBooks']);
+
+        // Finance
+        Route::get('/finance/summary', [LibrarianController::class, 'financeSummary']);
+        Route::get('/finance/topups', [LibrarianController::class, 'topups']);
+        Route::get('/finance/deposits', [LibrarianController::class, 'deposits']);
+        Route::get('/finance/all-topups', [PaymentController::class, 'getAllTopups']);
+        Route::get('/finance/deposit-summary', [LibrarianController::class, 'depositSummary']);
+        Route::get('/reports/borrow-stats', [LibrarianController::class, 'borrowStats']);
+
+        // Users
+        Route::get('/users/all', [LibrarianController::class, 'getUsers']);
+        Route::put('/users/{id}/status', [LibrarianController::class, 'updateUserStatus']);
+
+        // Reports
+        Route::get('/reports/overview', [LibrarianController::class, 'reportsOverview']);
+        Route::get('/reports/borrowings', [LibrarianController::class, 'reportsBorrowings']);
+
+        // Messages
+        Route::get('/messages', [LibrarianController::class, 'messages']);
+        Route::post('/messages', [LibrarianController::class, 'sendMessage']);
     });
 
 
@@ -156,12 +215,22 @@ Route::middleware('auth:api')->group(function () {
 
         // Ebook Management
         Route::get('/ebooks/pending', [AdminController::class, 'pendingEbooks']);
+        Route::post('/ebooks', [AdminController::class, 'uploadEbook']); // Admin upload ebook
         Route::post('/ebooks/{id}/approve', [AdminController::class, 'approveEbook']);
         Route::post('/ebooks/{id}/reject', [AdminController::class, 'rejectEbook']);
 
         // Withdrawal Requests
         Route::get('/withdraw-requests', [AdminController::class, 'withdrawalRequests']);
         Route::post('/withdraw-requests/{id}/process', [AdminController::class, 'processWithdrawal']);
+
+        // Admin Revenue
+        Route::get('/revenue', [AdminController::class, 'revenue']);
+        Route::get('/deposit-summary', [AdminController::class, 'depositSummary']);
+        Route::get('/borrow-stats', [AdminController::class, 'borrowStats']);
+
+        // Ebook Earnings
+        Route::get('/ebook-earnings', [AdminController::class, 'ebookEarnings']);
+        Route::get('/author-earnings', [AdminController::class, 'authorEarningsSummary']);
 
         // Settings
         Route::get('/settings', [AdminController::class, 'settings']);
@@ -176,6 +245,9 @@ Route::middleware('auth:api')->group(function () {
 
         // Audit Logs
         Route::get('/audit-logs', [AdminController::class, 'auditLogs']);
+
+        // Admin Revenue
+        Route::get('/revenue', [AdminController::class, 'getRevenue']);
     });
 });
 

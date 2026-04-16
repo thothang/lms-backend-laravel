@@ -60,6 +60,17 @@ return [
     // Ebook watermark text
     'ebook_watermark_format' => 'Doc boi: {name} ({email}) - Ngay: {date}',
 
+    // Watermark settings (sử dụng FPDI cơ bản - không alpha)
+    // Watermark in CHÉO từ góc trên bên trái xuống góc dưới bên phải
+    'watermark' => [
+        'enabled' => true,
+        'position' => 'diagonal',
+        'font_size' => 14,               // Tăng lên để dễ đọc hơn
+        // Màu xám trung bình sáng - đủ nhìn trên nền trắng, không quá đậm che nội dung
+        'color' => '#B0B0B0',
+        'font' => 'helvetica',
+    ],
+
     // Upload settings
     'max_ebook_size' => env('MAX_EBOOK_SIZE', 52428800), // 50MB
     'allowed_ebook_formats' => ['pdf'],

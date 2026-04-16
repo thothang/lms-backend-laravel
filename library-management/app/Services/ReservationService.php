@@ -29,6 +29,26 @@ class ReservationService
                 ];
             }
 
+            // Rule 1: Can only reserve if NO copies are available
+            if ($book->available_copies > 0) {
+                return [
+                    'success' => false,
+                    'message' => 'Sách hiện đang có sẵn bản sao, vui lòng mượn trực tiếp thay vì xếp hàng chờ',
+                ];
+            }
+
+            // Rule 2: Max queue size = Total copies
+            $pendingCount = Reservation::where('book_id', $bookId)
+                ->where('status', 'pending')
+                ->count();
+            
+            if ($pendingCount >= $book->total_copies) {
+                return [
+                    'success' => false,
+                    'message' => 'Hàng chờ cho sách này đã đầy (giới hạn bằng tổng số lượng sách)',
+                ];
+            }
+
             // Check eligibility
             // Check if user already has this book borrowed
             $existingBorrow = $user->borrowRecords()
@@ -117,6 +137,16 @@ class ReservationService
                 ['book_id' => $bookId, 'fee_paid' => $reservationFee]
             );
 
+            // Notify librarians/admin about new reservation
+            $librarians = User::where('role', 'librarian')->orWhere('role', 'admin')->get();
+            foreach ($librarians as $librarian) {
+                $this->sendNotification(
+                    $librarian->id,
+                    'Yêu cầu đặt trước mới',
+                    "Người dùng '{$user->name}' đã đặt trước sách '{$book->title}'. Vị trí trong hàng chờ: #{$queueOrder}."
+                );
+            }
+
             return [
                 'success' => true,
                 'reservation_id' => $reservation->id,
@@ -145,6 +175,32 @@ class ReservationService
             }
 
             $reservation->update(['status' => 'cancelled']);
+
+            // Refund fee to user
+            $book = \App\Models\Book::find($reservation->book_id);
+            if ($book && $reservation->fee_paid > 0) {
+                $user = $reservation->user;
+                $user->addBalance($reservation->fee_paid);
+
+                \App\Models\Transaction::create([
+                    'user_id' => $user->id,
+                    'amount' => $reservation->fee_paid,
+                    'type' => 'deposit_refund',
+                    'status' => 'success',
+                    'metadata' => [
+                        'reservation_id' => $reservation->id,
+                        'reason' => 'cancelled_by_user',
+                    ],
+                ]);
+
+                // Notify user about refund
+                Notification::create([
+                    'user_id' => $user->id,
+                    'title' => 'Đặt trước đã bị hủy - Hoàn tiền',
+                    'content' => "Đặt trước sách '{$book->title}' đã bị hủy. Phí đặt trước " . number_format($reservation->fee_paid) . " VNĐ đã được hoàn vào tài khoản.",
+                    'type' => Notification::TYPE_WEB,
+                ]);
+            }
 
             // Log action
             AuditLog::log(
