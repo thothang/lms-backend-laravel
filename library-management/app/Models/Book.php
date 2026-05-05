@@ -12,8 +12,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 class Book extends Model
 {
     use HasFactory, SoftDeletes;
- 
     protected $appends = ['average_rating'];
+    protected $with = ['reviews'];
 
     protected $fillable = [
         'title',
@@ -142,7 +142,7 @@ class Book extends Model
     public function getCoverImageAttribute($value)
     {
         if ($value && !filter_var($value, FILTER_VALIDATE_URL)) {
-            return asset('storage/' . ltrim($value, '/'));
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($value);
         }
         return $value;
     }

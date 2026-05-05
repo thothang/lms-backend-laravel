@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  # Container 1: Backend PHP-FPM
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lms_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    # Cấu hình để docker chứa backend có thể "nhìn thấy" MySQL của XAMPP trên host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Container 2: Frontend & Nginx Proxy
+  web:
+    build:
+      context: ../Front/lms-frontend
+      dockerfile: Dockerfile
+    container_name: lms_web
+    restart: unless-stopped
+    ports:
+      - "8080:80" # Tuỳ chọn mở port 8080 ra ngoài máy tính để test (không chạy cloudflare vẫn vào được http://localhost:8080)
+    volumes:
+      # Map thư mục Nginx config ta vừa tạo
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # Phục vụ backend files (assets, storage)
+      - ./:/var/www
+    depends_on:
+      - app
+
+  # Container 3: Cloudflare Zero Trust Tunnel
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: lms_tunnel
+    restart: always
+    command: tunnel --protocol http2 run
+    environment:
+      # Token đọc từ file .env (CLOUDFLARE_TUNNEL_TOKEN) ở trên máy của bạn
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - web

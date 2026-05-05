@@ -34,6 +34,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => CheckRole::class,
             'throttle' => ApiRateLimiter::class,
+            'active' => \App\Http\Middleware\EnsureActiveStatus::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

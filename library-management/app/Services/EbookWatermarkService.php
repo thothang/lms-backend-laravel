@@ -23,26 +23,56 @@ class EbookWatermarkService
     public function streamWithWatermark(Ebook $ebook, User $user)
     {
         $filePath = Storage::disk('local')->path($ebook->file_path);
-        
+
         if (!file_exists($filePath)) {
             return response()->json(['error' => 'File không tồn tại'], 404);
         }
 
         // Tạo watermark text với thông tin user
+        $dateStr = now()->format('d/m/Y');
         $watermarkText = sprintf(
             '%s (%s) - %s',
             $user->name,
             $user->email,
-            now()->format('d/m/Y')
+            $dateStr
         );
+
+        // Cache key based on ebook, user, and date (watermark changes daily)
+        $cacheKey = 'watermarked_pdf_' . $ebook->id . '_' . $user->id . '_' . $dateStr;
+        $cachedPath = storage_path('app/cache/' . $cacheKey . '.pdf');
+
+        // Check if cached file exists and is not too old (24 hours)
+        if (file_exists($cachedPath) && (time() - filemtime($cachedPath)) < 86400) {
+            \Log::info('Using cached watermarked PDF', ['ebook_id' => $ebook->id, 'user_id' => $user->id]);
+
+            // Log download
+            AuditLog::log(
+                $user->id,
+                'READ_EBOOK',
+                'ebooks',
+                $ebook->id,
+                null,
+                ['watermarked' => true, 'method' => 'FPDI_diagonal', 'cached' => true]
+            );
+
+            return response()->download($cachedPath, $ebook->title . '.pdf', [
+                'Content-Type' => 'application/pdf',
+                'Cache-Control' => 'public, max-age=3600',
+            ]);
+        }
 
         // Tạo file tạm
         $outputPath = storage_path('app/temp/watermarked_' . $ebook->id . '_' . $user->id . '_' . time() . '.pdf');
         $this->ensureTempDirectory(dirname($outputPath));
+        $this->ensureTempDirectory(dirname($cachedPath));
 
         // Luôn sử dụng FPDI để in watermark chéo (pdf-watermarker không hỗ trợ in chéo nhiều lần)
         try {
             $this->addDiagonalWatermarkWithFpdi($filePath, $outputPath, $watermarkText);
+
+            // Save to cache for future use
+            copy($outputPath, $cachedPath);
+            \Log::info('Cached watermarked PDF', ['ebook_id' => $ebook->id, 'user_id' => $user->id]);
         } catch (\Exception $e) {
             \Log::error('Watermark error: ' . $e->getMessage());
             return response()->json(['error' => 'Không thể tạo file PDF với watermark'], 500);
@@ -55,18 +85,17 @@ class EbookWatermarkService
             'ebooks',
             $ebook->id,
             null,
-            ['watermarked' => true, 'method' => 'FPDI_diagonal']
+            ['watermarked' => true, 'method' => 'FPDI_diagonal', 'cached' => false]
         );
 
         // Return stream response
         if (file_exists($outputPath)) {
             return response()->download($outputPath, $ebook->title . '.pdf', [
                 'Content-Type' => 'application/pdf',
-                'Cache-Control' => 'no-store, no-cache, must-revalidate',
-                'Pragma' => 'no-cache',
+                'Cache-Control' => 'public, max-age=3600',
             ])->deleteFileAfterSend(true);
         }
-        
+
         // Nếu file không tồn tại (lỗi), trả về lỗi JSON
         return response()->json(['error' => 'Không thể tạo file PDF với watermark'], 500);
     }
@@ -168,13 +197,13 @@ class EbookWatermarkService
     public function streamPreview(Ebook $ebook)
     {
         $filePath = Storage::disk('local')->path($ebook->file_path);
-        
+
         if (!file_exists($filePath)) {
             return response()->json(['error' => 'File không tồn tại'], 404);
         }
 
         $maxPages = $ebook->free_preview_pages ?? 5;
-        
+
         // Giới hạn số trang preview
         $previewPath = storage_path('app/temp/preview_' . $ebook->id . '_' . time() . '.pdf');
         $this->ensureTempDirectory(dirname($previewPath));

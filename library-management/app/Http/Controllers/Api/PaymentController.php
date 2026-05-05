@@ -8,13 +8,17 @@ use App\Models\Notification;
 use App\Models\PaymentTransaction;
 use App\Models\User;
 use App\Services\SepayService;
+use App\Traits\HandlesApiExceptions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class PaymentController extends Controller
 {
+    use HandlesApiExceptions;
+
     protected SepayService $sepayService;
 
     public function __construct(SepayService $sepayService)
@@ -25,127 +29,133 @@ class PaymentController extends Controller
     /**
      * Create deposit payment for borrow record
      */
-    public function createDepositPayment(Request $request): JsonResponse
+    public function createDepositPayment(Request $request): \Symfony\Component\HttpFoundation\Response
     {
-        $request->validate([
-            'borrow_record_id' => 'required|exists:borrow_records,id',
-        ]);
+        return $this->withApiExceptionHandling(function () use ($request) {
+            $request->validate([
+                'borrow_record_id' => 'required|exists:borrow_records,id',
+            ]);
 
-        $user = JWTAuth::parseToken()->authenticate();
-        $borrowRecord = BorrowRecord::findOrFail($request->borrow_record_id);
+            $user = JWTAuth::parseToken()->authenticate();
+            $borrowRecord = BorrowRecord::findOrFail($request->borrow_record_id);
 
-        // Verify ownership
-        if ($borrowRecord->user_id !== $user->id) {
-            return response()->json(['error' => 'Không có quyền'], 403);
-        }
+            // Verify ownership
+            if ($borrowRecord->user_id !== $user->id) {
+                return response()->json(['error' => 'Không có quyền'], 403);
+            }
 
-        // Check if already paid
-        if ($borrowRecord->prepaid_amount > 0) {
-            return response()->json(['error' => 'Đã thanh toán trước'], 400);
-        }
+            // Check if already paid
+            if ($borrowRecord->prepaid_amount > 0) {
+                return response()->json(['error' => 'Đã thanh toán trước'], 400);
+            }
 
-        $amount = $borrowRecord->calculateDepositAmount();
-        $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
+            $amount = $borrowRecord->calculateDepositAmount();
+            $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
 
-        $checkoutUrl = $this->sepayService->createCheckoutUrl([
-            'amount' => $amount,
-            'order_invoice_number' => 'DEP-' . $borrowRecord->id . '-' . time(),
-            'order_description' => "Đặt cọc mượn sách #{$borrowRecord->id}",
-            'success_url' => "{$frontendUrl}/payment/success",
-            'error_url' => "{$frontendUrl}/payment/error",
-            'cancel_url' => "{$frontendUrl}/payment/cancel",
-            'custom_data' => [
+            $checkoutUrl = $this->sepayService->createCheckoutUrl([
+                'amount' => $amount,
+                'order_invoice_number' => 'DEP-' . $borrowRecord->id . '-' . time(),
+                'order_description' => "Đặt cọc mượn sách #{$borrowRecord->id}",
+                'success_url' => "{$frontendUrl}/payment/success",
+                'error_url' => "{$frontendUrl}/payment/error",
+                'cancel_url' => "{$frontendUrl}/payment/cancel",
+                'custom_data' => [
+                    'borrow_record_id' => $borrowRecord->id,
+                    'type' => 'deposit',
+                    'user_id' => $user->id,
+                ],
+            ]);
+
+            return response()->json([
+                'checkout_url' => $checkoutUrl,
+                'amount' => $amount,
                 'borrow_record_id' => $borrowRecord->id,
-                'type' => 'deposit',
-                'user_id' => $user->id,
-            ],
-        ]);
-
-        return response()->json([
-            'checkout_url' => $checkoutUrl,
-            'amount' => $amount,
-            'borrow_record_id' => $borrowRecord->id,
-        ]);
+            ]);
+        }, 'Không thể tạo thanh toán đặt cọc');
     }
 
     /**
      * Create balance top-up payment
      */
-    public function createTopupPayment(Request $request): JsonResponse
+    public function createTopupPayment(Request $request): \Symfony\Component\HttpFoundation\Response
     {
-        $request->validate([
-            'amount' => 'required|numeric|min:10000|max:50000000',
-        ]);
+        return $this->withApiExceptionHandling(function () use ($request) {
+            $request->validate([
+                'amount' => 'required|numeric|min:10000|max:50000000',
+            ]);
 
-        $user = JWTAuth::parseToken()->authenticate();
-        $amount = (int) $request->amount;
-        $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
+            $user = JWTAuth::parseToken()->authenticate();
+            $amount = (int) $request->amount;
+            $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
 
-        $checkoutData = $this->sepayService->createCheckoutData([
-            'amount' => $amount,
-            'order_invoice_number' => 'TOPUP-' . $user->id . '-' . time(),
-            'order_description' => "Nap tien vao tai khoan: {$amount} VND",
-            'success_url' => "{$frontendUrl}/payment/success",
-            'error_url' => "{$frontendUrl}/payment/error",
-            'cancel_url' => "{$frontendUrl}/payment/cancel",
-            'custom_data' => [
-                'user_id' => $user->id,
-                'type' => 'topup',
-            ],
-        ]);
+            $checkoutData = $this->sepayService->createCheckoutData([
+                'amount' => $amount,
+                'order_invoice_number' => 'TOPUP-' . $user->id . '-' . time(),
+                'order_description' => "Nap tien vao tai khoan: {$amount} VND",
+                'success_url' => "{$frontendUrl}/payment/success",
+                'error_url' => "{$frontendUrl}/payment/error",
+                'cancel_url' => "{$frontendUrl}/payment/cancel",
+                'custom_data' => [
+                    'user_id' => $user->id,
+                    'type' => 'topup',
+                ],
+            ]);
 
-        return response()->json($checkoutData);
+            return response()->json($checkoutData);
+        }, 'Không thể tạo thanh toán nạp tiền');
     }
 
     /**
      * Create fine payment
      */
-    public function createFinePayment(Request $request): JsonResponse
+    public function createFinePayment(Request $request): \Symfony\Component\HttpFoundation\Response
     {
-        $request->validate([
-            'borrow_record_id' => 'required|exists:borrow_records,id',
-        ]);
+        return $this->withApiExceptionHandling(function () use ($request) {
+            $request->validate([
+                'borrow_record_id' => 'required|exists:borrow_records,id',
+            ]);
 
-        $user = JWTAuth::parseToken()->authenticate();
-        $borrowRecord = BorrowRecord::with('user')->findOrFail($request->borrow_record_id);
+            $user = JWTAuth::parseToken()->authenticate();
+            $borrowRecord = BorrowRecord::with('user')->findOrFail($request->borrow_record_id);
 
-        // Verify ownership or admin
-        if ($borrowRecord->user_id !== $user->id && !in_array($user->role, ['admin', 'librarian'])) {
-            return response()->json(['error' => 'Không có quyền'], 403);
-        }
+            // Verify ownership or admin
+            if ($borrowRecord->user_id !== $user->id && !in_array($user->role, ['admin', 'librarian'])) {
+                return response()->json(['error' => 'Không có quyền'], 403);
+            }
 
-        if ($borrowRecord->actual_fee <= 0) {
-            return response()->json(['error' => 'Không có phí để thanh toán'], 400);
-        }
+            if ($borrowRecord->actual_fee <= 0) {
+                return response()->json(['error' => 'Không có phí để thanh toán'], 400);
+            }
 
-        $amount = (int) $borrowRecord->actual_fee;
-        $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
+            $amount = (int) $borrowRecord->actual_fee;
+            $frontendUrl = config('app.frontend_url', 'http://localhost:5173');
 
-        $checkoutUrl = $this->sepayService->createCheckoutUrl([
-            'amount' => $amount,
-            'order_invoice_number' => 'FINE-' . $borrowRecord->id . '-' . time(),
-            'order_description' => "Thanh toán phí quá hạn #{$borrowRecord->id}",
-            'success_url' => "{$frontendUrl}/payment/success",
-            'error_url' => "{$frontendUrl}/payment/error",
-            'cancel_url' => "{$frontendUrl}/payment/cancel",
-            'custom_data' => [
+            $checkoutUrl = $this->sepayService->createCheckoutUrl([
+                'amount' => $amount,
+                'order_invoice_number' => 'FINE-' . $borrowRecord->id . '-' . time(),
+                'order_description' => "Thanh toán phí quá hạn #{$borrowRecord->id}",
+                'success_url' => "{$frontendUrl}/payment/success",
+                'error_url' => "{$frontendUrl}/payment/error",
+                'cancel_url' => "{$frontendUrl}/payment/cancel",
+                'custom_data' => [
+                    'borrow_record_id' => $borrowRecord->id,
+                    'type' => 'fine',
+                    'user_id' => $borrowRecord->user_id,
+                ],
+            ]);
+
+            return response()->json([
+                'checkout_url' => $checkoutUrl,
+                'amount' => $amount,
                 'borrow_record_id' => $borrowRecord->id,
-                'type' => 'fine',
-                'user_id' => $borrowRecord->user_id,
-            ],
-        ]);
-
-        return response()->json([
-            'checkout_url' => $checkoutUrl,
-            'amount' => $amount,
-            'borrow_record_id' => $borrowRecord->id,
-        ]);
+            ]);
+        }, 'Không thể tạo thanh toán phí');
     }
 
     /**
      * IPN callback from SePay - handles successful payments
      */
-    public function ipn(Request $request): JsonResponse
+    public function ipn(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         try {
             $data = $request->all();
@@ -272,6 +282,11 @@ class PaymentController extends Controller
         // Log transaction
         $this->logTransaction($borrowRecord->user_id, 'deposit', $amount, $data, $borrowRecord->id);
 
+        // Clear admin revenue cache
+        Cache::forget('admin.revenue');
+        // Clear admin transactions cache
+        Cache::forget('admin.transactions');
+
         // Create notification
         Notification::create([
             'user_id' => $borrowRecord->user_id,
@@ -298,6 +313,11 @@ class PaymentController extends Controller
 
         // Log transaction
         $this->logTransaction($userId, 'topup', $amount, $data);
+
+        // Clear admin revenue cache
+        Cache::forget('admin.revenue');
+        // Clear admin transactions cache
+        Cache::forget('admin.transactions');
 
         // Create notification
         Notification::create([
@@ -333,6 +353,11 @@ class PaymentController extends Controller
         // Log transaction
         $this->logTransaction($borrowRecord->user_id, 'fine', $amount, $data, $borrowRecord->id);
 
+        // Clear admin revenue cache
+        Cache::forget('admin.revenue');
+        // Clear admin transactions cache
+        Cache::forget('admin.transactions');
+
         // Create notification
         Notification::create([
             'user_id' => $borrowRecord->user_id,
@@ -365,70 +390,74 @@ class PaymentController extends Controller
     /**
      * Get payment history for user
      */
-    public function getHistory(): JsonResponse
+    public function getHistory(): \Symfony\Component\HttpFoundation\Response
     {
-        $user = JWTAuth::parseToken()->authenticate();
+        return $this->withApiExceptionHandling(function () {
+            $user = JWTAuth::parseToken()->authenticate();
 
-        $transactions = PaymentTransaction::where('user_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
+            $transactions = PaymentTransaction::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get();
 
-        return response()->json($transactions);
+            return response()->json($transactions);
+        }, 'Không thể lấy lịch sử thanh toán');
     }
 
     /**
      * Get all topup transactions (admin/librarian)
      */
-    public function getAllTopups(Request $request): JsonResponse
+    public function getAllTopups(Request $request): \Symfony\Component\HttpFoundation\Response
     {
-        $user = JWTAuth::parseToken()->authenticate();
+        return $this->withApiExceptionHandling(function () use ($request) {
+            $user = JWTAuth::parseToken()->authenticate();
 
-        // Check permission
-        if (!in_array($user->role, ['admin', 'librarian'])) {
-            return response()->json(['error' => 'Không có quyền'], 403);
-        }
+            // Check permission
+            if (!in_array($user->role, ['admin', 'librarian'])) {
+                return response()->json(['error' => 'Không có quyền'], 403);
+            }
 
-        $query = PaymentTransaction::with('user:id,name,email')
-            ->where('type', 'topup')
-            ->orderBy('created_at', 'desc');
+            $query = PaymentTransaction::with('user:id,name,email')
+                ->where('type', 'topup')
+                ->orderBy('created_at', 'desc');
 
-        // Filter by user
-        if ($request->has('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
+            // Filter by user
+            if ($request->has('user_id')) {
+                $query->where('user_id', $request->user_id);
+            }
 
-        // Filter by date range
-        if ($request->has('from_date')) {
-            $query->whereDate('created_at', '>=', $request->from_date);
-        }
-        if ($request->has('to_date')) {
-            $query->whereDate('created_at', '<=', $request->to_date);
-        }
+            // Filter by date range
+            if ($request->has('from_date')) {
+                $query->whereDate('created_at', '>=', $request->from_date);
+            }
+            if ($request->has('to_date')) {
+                $query->whereDate('created_at', '<=', $request->to_date);
+            }
 
-        // Search by user name
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->whereHas('user', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
+            // Search by user name
+            if ($request->has('search')) {
+                $search = $request->search;
+                $query->whereHas('user', function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            }
 
-        $topups = $query->paginate(20);
+            $topups = $query->paginate(20);
 
-        return response()->json([
-            'data' => $topups->items(),
-            'pagination' => [
-                'current_page' => $topups->currentPage(),
-                'last_page' => $topups->lastPage(),
-                'per_page' => $topups->perPage(),
-                'total' => $topups->total(),
-            ],
-            'summary' => [
-                'total_amount' => $topups->sum('amount'),
-                'total_count' => $topups->total(),
-            ],
-        ]);
+            return response()->json([
+                'data' => $topups->items(),
+                'pagination' => [
+                    'current_page' => $topups->currentPage(),
+                    'last_page' => $topups->lastPage(),
+                    'per_page' => $topups->perPage(),
+                    'total' => $topups->total(),
+                ],
+                'summary' => [
+                    'total_amount' => $topups->sum('amount'),
+                    'total_count' => $topups->total(),
+                ],
+            ]);
+        }, 'Không thể lấy danh sách nạp tiền');
     }
 
     /**
@@ -465,7 +494,7 @@ class PaymentController extends Controller
     /**
      * Handle success return from SePay (API JSON response)
      */
-    public function success(Request $request): JsonResponse
+    public function success(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         return response()->json([
             'success' => true,
@@ -477,42 +506,44 @@ class PaymentController extends Controller
      * Direct confirm topup for sandbox testing (since IPN cannot reach localhost)
      * ⚠️ CRITICAL SECURITY: Only available in non-production environments!
      */
-    public function confirmTopup(Request $request): JsonResponse
+    public function confirmTopup(Request $request): \Symfony\Component\HttpFoundation\Response
     {
-        $user = JWTAuth::parseToken()->authenticate();
-        $request->validate([
-            'amount' => 'required|numeric|min:10000|max:10000000',
-        ]);
+        return $this->withApiExceptionHandling(function () use ($request) {
+            $user = JWTAuth::parseToken()->authenticate();
+            $request->validate([
+                'amount' => 'required|numeric|min:10000|max:10000000',
+            ]);
 
-        $amount = (float) $request->amount;
-        $requestId = $request->header('X-Request-ID'); // Client-generated unique ID
+            $amount = (float) $request->amount;
+            $requestId = $request->header('X-Request-ID'); // Client-generated unique ID
 
-        // Idempotency check: prevent duplicate processing using request_id column
-        if ($requestId) {
-            $existingTransaction = PaymentTransaction::where('request_id', $requestId)->first();
-            if ($existingTransaction) {
-                $user->refresh();
-                \Log::info('Topup duplicate detected by request_id', ['request_id' => $requestId, 'transaction_id' => $existingTransaction->transaction_id]);
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Giao dịch đã được xử lý trước đó',
-                    'new_balance' => $user->balance,
-                    'duplicate' => true,
-                    'transaction_id' => $existingTransaction->transaction_id,
-                ]);
+            // Idempotency check: prevent duplicate processing using request_id column
+            if ($requestId) {
+                $existingTransaction = PaymentTransaction::where('request_id', $requestId)->first();
+                if ($existingTransaction) {
+                    $user->refresh();
+                    \Log::info('Topup duplicate detected by request_id', ['request_id' => $requestId, 'transaction_id' => $existingTransaction->transaction_id]);
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Giao dịch đã được xử lý trước đó',
+                        'new_balance' => $user->balance,
+                        'duplicate' => true,
+                        'transaction_id' => $existingTransaction->transaction_id,
+                    ]);
+                }
             }
-        } else {
-            // Fallback: check by amount, user and very short time window (30 seconds) to avoid false positives
+
+            // Check if transaction already exists from IPN callback (within 5 minutes)
             $existingTransaction = PaymentTransaction::where('user_id', $user->id)
                 ->where('type', 'topup')
                 ->where('amount', $amount)
                 ->where('transaction_status', 'APPROVED')
-                ->where('created_at', '>=', now()->subSeconds(30))
+                ->where('created_at', '>=', now()->subMinutes(5))
                 ->first();
 
             if ($existingTransaction) {
                 $user->refresh();
-                \Log::info('Topup duplicate detected by fallback check', ['amount' => $amount, 'transaction_id' => $existingTransaction->transaction_id]);
+                \Log::info('Topup already processed by IPN', ['amount' => $amount, 'transaction_id' => $existingTransaction->transaction_id]);
                 return response()->json([
                     'success' => true,
                     'message' => 'Giao dịch đã được xử lý trước đó',
@@ -521,63 +552,80 @@ class PaymentController extends Controller
                     'transaction_id' => $existingTransaction->transaction_id,
                 ]);
             }
-        }
 
-        DB::beginTransaction();
-        try {
-            // Use lockForUpdate to prevent race conditions
-            $user = User::lockForUpdate()->find($user->id);
-            
-            // Update balance using direct update for atomic operation
-            $user->balance = $user->balance + $amount;
-            $user->save();
-            $user->refresh();
+            DB::beginTransaction();
+            try {
+                // Use lockForUpdate to prevent race conditions
+                $user = User::lockForUpdate()->find($user->id);
 
-            // Log transaction with request ID for tracking
-            $transactionId = 'TEST-' . uniqid();
-            
-            // Create payment transaction record
-            $transaction = new PaymentTransaction();
-            $transaction->user_id = $user->id;
-            $transaction->transaction_id = $transactionId;
-            $transaction->request_id = $requestId; // Store as separate column
-            $transaction->type = 'topup';
-            $transaction->amount = $amount;
-            $transaction->currency = 'VND';
-            $transaction->transaction_status = 'APPROVED';
-            $transaction->metadata = ['source' => 'sandbox_test'];
-            $transaction->save();
+                // Update balance using direct update for atomic operation
+                $user->balance = $user->balance + $amount;
+                $user->save();
+                $user->refresh();
 
-            // Notification
-            Notification::create([
-                'user_id' => $user->id,
-                'title' => 'Nạp tiền thành công',
-                'content' => "Bạn đã nạp " . number_format($amount) . " VND vào tài khoản. Số dư hiện tại: " . number_format($user->balance) . " VND",
-                'type' => Notification::TYPE_WEB,
-            ]);
+                // Check if there's a PENDING transaction for this user and amount (within 10 minutes)
+                $pendingTransaction = PaymentTransaction::where('user_id', $user->id)
+                    ->where('type', 'topup')
+                    ->where('amount', $amount)
+                    ->where('transaction_status', 'PENDING')
+                    ->where('created_at', '>=', now()->subMinutes(10))
+                    ->first();
 
-            DB::commit();
+                if ($pendingTransaction) {
+                    // Update existing PENDING transaction to APPROVED
+                    $transactionId = 'TOPUP-' . $user->id . '-' . time() . '-' . uniqid();
+                    $pendingTransaction->update([
+                        'transaction_id' => $transactionId,
+                        'request_id' => $requestId,
+                        'transaction_status' => 'APPROVED',
+                    ]);
+                    \Log::info('Topup updated existing PENDING transaction', ['transaction_id' => $transactionId]);
+                } else {
+                    // Create new transaction record
+                    $transactionId = 'TOPUP-' . $user->id . '-' . time() . '-' . uniqid();
+                    $transaction = new PaymentTransaction();
+                    $transaction->user_id = $user->id;
+                    $transaction->transaction_id = $transactionId;
+                    $transaction->request_id = $requestId;
+                    $transaction->type = 'topup';
+                    $transaction->amount = $amount;
+                    $transaction->currency = 'VND';
+                    $transaction->transaction_status = 'APPROVED';
+                    $transaction->save();
+                    \Log::info('Topup created new transaction', ['transaction_id' => $transactionId]);
+                }
 
-            \Log::info('Topup successful', ['user_id' => $user->id, 'amount' => $amount, 'new_balance' => $user->balance, 'request_id' => $requestId]);
+                // Notification
+                Notification::create([
+                    'user_id' => $user->id,
+                    'title' => 'Nạp tiền thành công',
+                    'content' => "Bạn đã nạp " . number_format($amount) . " VND vào tài khoản. Số dư hiện tại: " . number_format($user->balance) . " VND",
+                    'type' => Notification::TYPE_WEB,
+                ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Nạp tiền thành công!',
-                'new_balance' => $user->balance,
-                'duplicate' => false,
-                'transaction_id' => $transactionId,
-            ]);
+                DB::commit();
 
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['success' => false, 'error' => $e->getMessage()], 400);
-        }
+                \Log::info('Topup successful', ['user_id' => $user->id, 'amount' => $amount, 'new_balance' => $user->balance, 'request_id' => $requestId]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Nạp tiền thành công!',
+                    'new_balance' => $user->balance,
+                    'duplicate' => false,
+                    'transaction_id' => $transactionId,
+                ]);
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                throw $e;
+            }
+        }, 'Không thể xác nhận nạp tiền');
     }
 
     /**
      * Handle error return from SePay
      */
-    public function error(Request $request): JsonResponse
+    public function error(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         return response()->json([
             'success' => false,
@@ -588,7 +636,7 @@ class PaymentController extends Controller
     /**
      * Handle cancel return from SePay
      */
-    public function cancel(Request $request): JsonResponse
+    public function cancel(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         return response()->json([
             'success' => false,

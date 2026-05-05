@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Ebook extends Model
 {
     use HasFactory, SoftDeletes;
- 
     protected $appends = ['average_rating'];
+    protected $with = ['reviews'];
 
     protected $fillable = [
         'title',
@@ -89,7 +89,12 @@ class Ebook extends Model
             return true;
         }
 
-        // Check if purchased
+        // Free ebooks can be read by any authenticated user
+        if ($this->is_free) {
+            return true;
+        }
+
+        // Check if purchased (for paid ebooks)
         return $this->isPurchasedBy($user);
     }
 
@@ -161,7 +166,7 @@ class Ebook extends Model
     public function getCoverImageAttribute($value)
     {
         if ($value && !filter_var($value, FILTER_VALIDATE_URL)) {
-            return asset('storage/' . ltrim($value, '/'));
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($value);
         }
         return $value;
     }

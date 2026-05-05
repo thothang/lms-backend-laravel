@@ -9,7 +9,12 @@ class UpdateProfileRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        try {
+            JWTAuth::parseToken()->authenticate();
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     public function rules(): array

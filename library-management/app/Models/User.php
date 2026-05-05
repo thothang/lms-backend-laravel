@@ -21,6 +21,7 @@ class User extends Authenticatable implements JWTSubject
         'phone',
         'address',
         'verification_token',
+        'email_verified_at',
         'dob',
         'balance',
         'earnings_balance',
@@ -266,8 +267,13 @@ class User extends Authenticatable implements JWTSubject
             return false;
         }
 
+        // Load rolePermission if not already loaded
+        if (!$this->relationLoaded('rolePermission')) {
+            $this->load('rolePermission');
+        }
+
         $rolePermission = $this->rolePermission;
-        
+
         if (!$rolePermission) {
             return false;
         }

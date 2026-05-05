@@ -14,6 +14,7 @@
         "laravel/reverb": "@beta",
         "laravel/scout": "^10.15",
         "laravel/tinker": "^2.10.1",
+        "league/flysystem-aws-s3-v3": "*",
         "ramsey/uuid": "^4.7",
         "sepay/sepay-pg": "*",
         "setasign/fpdf": "^1.8",

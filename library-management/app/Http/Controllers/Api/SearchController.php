@@ -25,7 +25,7 @@ class SearchController extends Controller
 
         // Search Physical Books
         if ($type === 'all' || $type === 'book') {
-            $bookQuery = Book::with('category');
+            $bookQuery = Book::with(['category', 'reviews']);
 
             if ($keyword) {
                 $bookQuery->where(function ($q) use ($keyword) {
@@ -54,7 +54,7 @@ class SearchController extends Controller
 
         // Search Ebooks
         if ($type === 'all' || $type === 'ebook') {
-            $ebookQuery = Ebook::with(['author:id,name', 'category:id,name'])
+            $ebookQuery = Ebook::with(['author:id,name', 'category:id,name', 'reviews'])
                 ->approved();
 
             if ($keyword) {

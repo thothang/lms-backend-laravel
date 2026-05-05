@@ -45,7 +45,11 @@ class AuthController extends Controller
 
         // Send Email verification
         $verifyUrl = url('/api/verify-email/' . $verificationToken);
-        Mail::to($user->email)->send(new VerifyEmailMail($user, $verifyUrl));
+        try {
+            Mail::to($user->email)->send(new VerifyEmailMail($user, $verifyUrl));
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Mail timeout/failure during registration: ' . $e->getMessage());
+        }
 
         // Log action
         AuditLog::log(

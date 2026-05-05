@@ -38,7 +38,18 @@ return [
             'report' => false,
         ],
 
-        'public' => [
+        'public' => env('FILESYSTEM_PUBLIC_DRIVER', 'local') === 's3' ? [
+            'driver' => 's3',
+            'key' => env('SUPABASE_ACCESS_KEY_ID'),
+            'secret' => env('SUPABASE_SECRET_ACCESS_KEY'),
+            'region' => env('SUPABASE_REGION', 'ap-northeast-1'),
+            'bucket' => env('SUPABASE_BUCKET', 'lms-storage'),
+            'url' => env('SUPABASE_PUBLIC_URL'),
+            'endpoint' => env('SUPABASE_ENDPOINT'),
+            'use_path_style_endpoint' => true,
+            'visibility' => 'public',
+            'throw' => false,
+        ] : [
             'driver' => 'local',
             'root' => storage_path('app/public'),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
