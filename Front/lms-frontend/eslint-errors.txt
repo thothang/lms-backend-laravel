@@ -1,0 +1,106 @@
+﻿
+  34:13  error  'importScripts' is not defined  no-undef
+  70:1   error  'define' is not defined         no-undef
+     1:1   error    'define' is not defined                                                         no-undef
+     5:37  error    '_' is not defined                                                              no-undef
+     6:17  error    Empty block statement                                                           no-empty
+    52:7   error    Definition for rule '@typescript-eslint/ban-types' was not found                
+@typescript-eslint/ban-types
+   419:5   error    Definition for rule '@typescript-eslint/ban-types' was not found                
+@typescript-eslint/ban-types
+   458:40  error    '_' is not defined                                                              no-undef
+   459:17  error    Empty block statement                                                           no-empty
+   752:11  error    Definition for rule '@typescript-eslint/no-unsafe-member-access' was not found  
+@typescript-eslint/no-unsafe-member-access
+   754:13  error    Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     
+@typescript-eslint/no-unsafe-assignment
+   948:11  error    Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     
+@typescript-eslint/no-unsafe-assignment
+   964:13  error    Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     
+@typescript-eslint/no-unsafe-assignment
+  1197:53  error    'registration' is not defined                                                   no-undef
+  1257:5   error    Definition for rule '@typescript-eslint/ban-types' was not found                
+@typescript-eslint/ban-types
+  1275:5   error    Definition for rule '@typescript-eslint/ban-types' was not found                
+@typescript-eslint/ban-types
+  1291:14  error    '_extends' is a function                                                        no-func-assign
+  1545:43  error    '_' is not defined                                                              no-undef
+  1546:17  error    Empty block statement                                                           no-empty
+  2139:51  error    '_' is not defined                                                              no-undef
+  2140:17  error    Empty block statement                                                           no-empty
+  2423:43  error    '_' is not defined                                                              no-undef
+  2424:17  error    Empty block statement                                                           no-empty
+  2502:56  error    'ExtendableEvent' is not defined                                                no-undef
+  2541:61  error    'FetchEvent' is not defined                                                     no-undef
+  2576:15  error    Unexpected constant condition                                                   
+no-constant-condition
+  3042:32  error    'FetchEvent' is not defined                                                     no-undef
+  3528:43  error    '_' is not defined                                                              no-undef
+  3529:17  error    Empty block statement                                                           no-empty
+  4182:9   error    Definition for rule '@typescript-eslint/no-unsafe-return' was not found         
+@typescript-eslint/no-unsafe-return
+  4229:9   error    Definition for rule '@typescript-eslint/no-unsafe-return' was not found         
+@typescript-eslint/no-unsafe-return
+     1:1   error    'define' is not defined                                                         no-undef
+     5:37  error    '_' is not defined                                                              no-undef
+     6:17  error    Empty block statement                                                           no-empty
+    52:7   error    Definition for rule '@typescript-eslint/ban-types' was not found                
+@typescript-eslint/ban-types
+   419:5   error    Definition for rule '@typescript-eslint/ban-types' was not found                
+@typescript-eslint/ban-types
+   458:40  error    '_' is not defined                                                              no-undef
+   459:17  error    Empty block statement                                                           no-empty
+   752:11  error    Definition for rule '@typescript-eslint/no-unsafe-member-access' was not found  
+@typescript-eslint/no-unsafe-member-access
+   754:13  error    Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     
+@typescript-eslint/no-unsafe-assignment
+   948:11  error    Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     
+@typescript-eslint/no-unsafe-assignment
+   964:13  error    Definition for rule '@typescript-eslint/no-unsafe-assignment' was not found     
+@typescript-eslint/no-unsafe-assignment
+  1197:53  error    'registration' is not defined                                                   no-undef
+  1257:5   error    Definition for rule '@typescript-eslint/ban-types' was not found                
+@typescript-eslint/ban-types
+  1275:5   error    Definition for rule '@typescript-eslint/ban-types' was not found                
+@typescript-eslint/ban-types
+  1291:14  error    '_extends' is a function                                                        no-func-assign
+  1545:43  error    '_' is not defined                                                              no-undef
+  1546:17  error    Empty block statement                                                           no-empty
+  2139:51  error    '_' is not defined                                                              no-undef
+  2140:17  error    Empty block statement                                                           no-empty
+  2423:43  error    '_' is not defined                                                              no-undef
+  2424:17  error    Empty block statement                                                           no-empty
+  2502:56  error    'ExtendableEvent' is not defined                                                no-undef
+  2541:61  error    'FetchEvent' is not defined                                                     no-undef
+  2576:15  error    Unexpected constant condition                                                   
+no-constant-condition
+  3042:32  error    'FetchEvent' is not defined                                                     no-undef
+  3511:43  error    '_' is not defined                                                              no-undef
+  3512:17  error    Empty block statement                                                           no-empty
+  4165:9   error    Definition for rule '@typescript-eslint/no-unsafe-return' was not found         
+@typescript-eslint/no-unsafe-return
+  4212:9   error    Definition for rule '@typescript-eslint/no-unsafe-return' was not found         
+@typescript-eslint/no-unsafe-return
+  5:50  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+  5:84  error  Do not access Object.prototype method 'hasOwnProperty' from target object  no-prototype-builtins
+  58:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+  15:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+   25:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+  222:10  error    Error: Cannot create components during render
+  235:14  error    Error: Cannot create components during render
+  5:17  error  Fast refresh only works when a file only exports components. Use a new file to share constants or 
+functions between components  react-refresh/only-export-components
+  10:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+  3:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or 
+functions between components  react-refresh/only-export-components
+  196:14  error    Fast refresh only works when a file only exports components. Use a new file to share constants or 
+functions between components  react-refresh/only-export-components
+  173:29  error    Do not access Object.prototype method 'hasOwnProperty' from target object                           
+                 no-prototype-builtins
+  104:29  error    Do not access Object.prototype method 'hasOwnProperty' from target object                           
+no-prototype-builtins
+  58:7   error    Error: Cannot access variable before it is declared
+  34:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+  236:95  error  Error: Cannot call impure function during render
+
+
