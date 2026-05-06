@@ -30,8 +30,11 @@ const PaymentSuccessPage = () => {
     hasCalledRef.current = true;
 
     const confirmAndRedirect = async () => {
-      const pendingAmount = sessionStorage.getItem('pending_topup_amount');
-      const processedRequestId = sessionStorage.getItem('processed_topup_request_id');
+      // Try sessionStorage first, fall back to localStorage for mobile private browsing
+      const pendingAmount = sessionStorage.getItem('pending_topup_amount')
+        || localStorage.getItem('pending_topup_amount');
+      const processedRequestId = sessionStorage.getItem('processed_topup_request_id')
+        || localStorage.getItem('processed_topup_request_id');
 
       if (!pendingAmount) {
         // If no pending amount found, redirect to profile after delay
@@ -46,6 +49,8 @@ const PaymentSuccessPage = () => {
       if (processedRequestId) {
         sessionStorage.removeItem('pending_topup_amount');
         sessionStorage.removeItem('processed_topup_request_id');
+        localStorage.removeItem('pending_topup_amount');
+        localStorage.removeItem('processed_topup_request_id');
         setStatus('success');
         const redirectTimer = setTimeout(() => {
           navigate('/profile');
@@ -58,17 +63,24 @@ const PaymentSuccessPage = () => {
 
       try {
         // Generate unique request ID for idempotency
-        const requestId = crypto.randomUUID();
+        // Fallback for older mobile browsers that don't support crypto.randomUUID
+        const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substr(2, 9)}`;
 
         // Store request ID before API call to prevent duplicate
+        // Also store in localStorage as backup for private browsing mode
         sessionStorage.setItem('processed_topup_request_id', requestId);
+        localStorage.setItem('processed_topup_request_id', requestId);
 
         // Call API to confirm topup with request ID for idempotency
         const response = await paymentService.confirmTopup(Number(pendingAmount), requestId);
 
-        // Remove from session storage after successful confirmation
+        // Remove from both session and local storage after successful confirmation
         sessionStorage.removeItem('pending_topup_amount');
         sessionStorage.removeItem('processed_topup_request_id');
+        localStorage.removeItem('pending_topup_amount');
+        localStorage.removeItem('processed_topup_request_id');
         setStatus('success');
 
         // Show the success toast

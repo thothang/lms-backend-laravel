@@ -418,6 +418,7 @@ export const useBorrowBook = () => {
         'admin',
         ['user', 'balance'],
         ['user', 'borrows'],
+        ['user', 'notifications'],
       ]);
     },
     onError: (err) => {
@@ -438,6 +439,9 @@ export const useReserveBook = () => {
         'home',
         'reports',
         'admin',
+        ['user', 'balance'],
+        ['user', 'reservations'],
+        ['user', 'notifications'],
       ]);
     },
     onError: (err) => {
@@ -466,6 +470,7 @@ export const usePurchaseEbook = () => {
         'ebooks',
         'reports',
         'admin',
+        ['user', 'notifications'],
       ]);
     },
     onError: (err, variables, context) => {
@@ -494,6 +499,7 @@ export const useReturnBook = () => {
         'admin',
         ['user', 'balance'],
         ['user', 'borrows'],
+        ['user', 'notifications'],
       ]);
     },
     onError: (err) => {
@@ -511,6 +517,8 @@ export const useRenewBook = () => {
       invalidateRelatedCaches(queryClient, [
         ['user', 'borrows'],
         ['librarian', 'borrows'],
+        ['user', 'balance'],
+        ['user', 'notifications'],
       ]);
     },
     onError: (err) => {
@@ -530,6 +538,8 @@ export const useCancelReservation = () => {
         ['librarian', 'reservations'],
         'books',
         'home',
+        ['user', 'balance'],
+        ['user', 'notifications'],
       ]);
     },
     onError: (err) => {

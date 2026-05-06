@@ -20,4 +20,5 @@ Schedule::command('reminders:send-overdue')->dailyAt('08:00');
 Schedule::command('users:auto-lock')->dailyAt('09:00');
 Schedule::command('books:remove-new-tag')->daily();
 Schedule::command('transactions:retry-failed-sepay')->everyFiveMinutes();
+Schedule::command('borrows:expire-pending-pickups')->hourly();
 Schedule::command('users:sync-total-debt')->hourly();

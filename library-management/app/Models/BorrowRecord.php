@@ -63,6 +63,21 @@ class BorrowRecord extends Model
     // Calculate borrow fee based on calendar days
     public function calculateFee(): array
     {
+        // Guard against null dates
+        if (!$this->borrow_date || !$this->due_date) {
+            return [
+                'total_days' => 0,
+                'on_time_days' => 0,
+                'overdue_days' => 0,
+                'borrow_fee' => 0.0,
+                'deposit' => 0.0,
+                'prepaid' => 0.0,
+                'total_held' => 0.0,
+                'refund' => 0.0,
+                'extra_amount_needed' => 0.0,
+            ];
+        }
+
         $borrowDate = $this->borrow_date->startOfDay();
         $returnDate = ($this->return_date ?? Carbon::now())->startOfDay();
         $dueDate = $this->due_date->startOfDay();
@@ -101,6 +116,9 @@ class BorrowRecord extends Model
     // Check if overdue
     public function isOverdue(): bool
     {
+        if (!$this->due_date) {
+            return false;
+        }
         return $this->status === 'active' 
             && Carbon::now()->greaterThan($this->due_date);
     }
@@ -108,6 +126,9 @@ class BorrowRecord extends Model
     // Get remaining days until due
     public function getRemainingDaysAttribute(): int
     {
+        if (!$this->due_date) {
+            return 0;
+        }
         return Carbon::now()->diffInDays($this->due_date, false);
     }
 
@@ -118,6 +139,11 @@ class BorrowRecord extends Model
             return [false, 'Sách không ở trạng thái mượn'];
         }
 
+        // Guard against null due_date
+        if (!$this->due_date) {
+            return [false, 'Không có ngày hạn trả'];
+        }
+
         if ($this->isOverdue()) {
             return [false, 'Sách đã quá hạn, không thể gia hạn'];
         }
@@ -125,6 +151,11 @@ class BorrowRecord extends Model
         $maxRenew = config('library.max_renew_count', 2);
         if ($this->renew_count >= $maxRenew) {
             return [false, "Đã gia hạn tối đa {$maxRenew} lần"];
+        }
+
+        // Guard against null copy/book
+        if (!$this->copy || !$this->copy->book) {
+            return [false, 'Không tìm thấy thông tin sách'];
         }
 
         // Check if there are ANY pending reservations

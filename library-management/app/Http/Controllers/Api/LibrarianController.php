@@ -947,6 +947,13 @@ class LibrarianController extends Controller
 
             $result = $this->borrowService->confirmReturn($borrowRecord, $librarian->id);
 
+            // Check if operation failed
+            if (isset($result['success']) && $result['success'] === false) {
+                return response()->json([
+                    'error' => $result['message'] ?? 'Không thể xác nhận trả sách',
+                ], 400);
+            }
+
             return response()->json([
                 'message' => $result['message'],
                 'borrow_record' => $result['borrow_record'],

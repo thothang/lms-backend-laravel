@@ -33,16 +33,20 @@ const DepositModal = ({ isOpen, onClose }) => {
       api.clearCacheByPattern('/balance');
 
       // Store amount for confirmation
+      // Store in both sessionStorage and localStorage for mobile compatibility
       sessionStorage.setItem('pending_topup_amount', amount);
       sessionStorage.setItem('pending_topup_order', form_fields.order_invoice_number);
+      localStorage.setItem('pending_topup_amount', amount);
+      localStorage.setItem('pending_topup_order', form_fields.order_invoice_number);
 
-      // Create form and submit via POST (SePay requires POST)
+      // SePay requires POST form submission (GET returns 404)
+      // Create and submit form programmatically for mobile compatibility
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = checkout_url;
-      form.target = '_self'; // Open in same tab
-      
-      // Add all form fields
+      form.style.display = 'none';
+
+      // Add all form fields as hidden inputs
       Object.entries(form_fields).forEach(([key, value]) => {
         const input = document.createElement('input');
         input.type = 'hidden';
@@ -51,11 +55,13 @@ const DepositModal = ({ isOpen, onClose }) => {
         form.appendChild(input);
       });
 
-      // Add form to body and submit
+      // Add form to document and submit
       document.body.appendChild(form);
-      form.submit();
       
-      // Note: We won't reach here because the page will redirect
+      // Small delay to ensure form is in DOM before submitting (mobile fix)
+      setTimeout(() => {
+        form.submit();
+      }, 50);
       
     } catch (err) {
       const errorMessage = err.response?.data?.message 

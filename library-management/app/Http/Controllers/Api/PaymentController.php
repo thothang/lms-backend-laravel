@@ -7,6 +7,7 @@ use App\Models\BorrowRecord;
 use App\Models\Notification;
 use App\Models\PaymentTransaction;
 use App\Models\User;
+use App\Services\SepayGateway;
 use App\Services\SepayService;
 use App\Traits\HandlesApiExceptions;
 use Illuminate\Http\JsonResponse;
@@ -20,10 +21,12 @@ class PaymentController extends Controller
     use HandlesApiExceptions;
 
     protected SepayService $sepayService;
+    protected SepayGateway $sepayGateway;
 
-    public function __construct(SepayService $sepayService)
+    public function __construct(SepayService $sepayService, SepayGateway $sepayGateway)
     {
         $this->sepayService = $sepayService;
+        $this->sepayGateway = $sepayGateway;
     }
 
     /**

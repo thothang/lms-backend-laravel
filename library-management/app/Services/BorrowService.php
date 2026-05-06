@@ -80,8 +80,9 @@ class BorrowService
                 ],
             ]);
 
-            // Copy vẫn là available (chưa lấy)
-            // Không cập nhật copy status ở đây
+            // Update copy status to borrowed immediately to decrease available_copies count
+            $copy->update(['status' => 'borrowed']);
+            $book->updateAvailableCopies();
 
             // Log action
             AuditLog::log(
@@ -598,9 +599,34 @@ class BorrowService
     {
         return DB::transaction(function () use ($borrowRecord, $librarianId) {
             $borrowRecord = BorrowRecord::lockForUpdate()->with(['copy.book', 'user'])->find($borrowRecord->id);
+
+            // Validate status - chỉ cho phép trả khi đang active
+            if ($borrowRecord->status !== 'active') {
+                return [
+                    'success' => false,
+                    'message' => 'Phiếu mượn không ở trạng thái đang mượn',
+                ];
+            }
+
+            // Validate copy exists
+            if (!$borrowRecord->copy) {
+                return [
+                    'success' => false,
+                    'message' => 'Không tìm thấy bản sao sách',
+                ];
+            }
+
             $copy = $borrowRecord->copy;
             $book = $copy->book;
             $user = $borrowRecord->user;
+
+            // Validate book exists
+            if (!$book) {
+                return [
+                    'success' => false,
+                    'message' => 'Không tìm thấy sách',
+                ];
+            }
 
             // Calculate fee
             $feeData = $borrowRecord->calculateFee();
@@ -793,6 +819,105 @@ class BorrowService
                 'success' => true,
                 'message' => 'Đã hủy yêu cầu mượn sách và hoàn tiền',
                 'refunded_amount' => $totalDeducted,
+            ];
+        });
+    }
+    /**
+     * System expires a pending pickup request after timeout
+     */
+    public function expirePendingPickup(BorrowRecord $borrowRecord): array
+    {
+        return DB::transaction(function () use ($borrowRecord) {
+            $borrowRecord = BorrowRecord::lockForUpdate()->with(['copy.book', 'user'])->find($borrowRecord->id);
+
+            if ($borrowRecord->status !== 'pending_pickup') {
+                return [
+                    'success' => false,
+                    'message' => 'Phiếu mượn không ở trạng thái chờ nhận sách',
+                ];
+            }
+
+            $copy = $borrowRecord->copy;
+            $book = $copy->book;
+            $user = $borrowRecord->user;
+
+            // Phí phạt 1 ngày
+            $oneDayFee = (float)$borrowRecord->daily_fee_applied;
+            $totalHeld = (float)$borrowRecord->deposit_amount + (float)$borrowRecord->prepaid_amount;
+            $refundAmount = max(0, $totalHeld - $oneDayFee);
+
+            // 1. Hoàn tiền còn lại cho user
+            if ($user && $refundAmount > 0) {
+                $user->addBalance($refundAmount);
+
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'amount' => $refundAmount,
+                    'type' => 'deposit_refund',
+                    'status' => 'success',
+                    'metadata' => [
+                        'borrow_id' => $borrowRecord->id,
+                        'reason' => 'pending_pickup_expired_refund',
+                    ],
+                ]);
+            }
+
+            // 2. Thu phí 1 ngày vào thu nhập thư viện
+            $admin = User::where('role', 'admin')->first();
+            if ($admin && $oneDayFee > 0) {
+                $admin->addEarnings($oneDayFee);
+
+                Transaction::create([
+                    'user_id' => $admin->id,
+                    'amount' => $oneDayFee,
+                    'type' => 'library_fee_income',
+                    'status' => 'success',
+                    'metadata' => [
+                        'borrow_id' => $borrowRecord->id,
+                        'book_title' => $book->title,
+                        'description' => 'Phí phạt quá hạn nhận sách (1 ngày)',
+                    ],
+                ]);
+            }
+
+            // 3. Cập nhật trạng thái BorrowRecord
+            $borrowRecord->update([
+                'status' => 'cancelled',
+                'return_date' => Carbon::now(),
+                'actual_fee' => $oneDayFee,
+            ]);
+
+            // 4. Mở khóa sách (BookCopy)
+            $copy->update(['status' => 'available']);
+            $book->updateAvailableCopies();
+
+            // 5. Log action
+            AuditLog::log(
+                0, // System
+                'EXPIRE_PENDING_PICKUP',
+                'borrow_records',
+                $borrowRecord->id,
+                ['status' => 'pending_pickup'],
+                ['status' => 'cancelled']
+            );
+
+            // 6. Send notification to user
+            if ($user) {
+                $this->sendNotification(
+                    $user->id,
+                    'Yêu cầu mượn sách đã hết hạn',
+                    "Bạn đã không đến nhận sách '{$book->title}' đúng hạn. Yêu cầu đã bị hủy và bạn bị trừ phí mượn 1 ngày (" . number_format($oneDayFee) . " VNĐ). Số tiền còn lại " . number_format($refundAmount) . " VNĐ đã được hoàn vào tài khoản."
+                );
+            }
+
+            // 7. Tiếp tục hàng chờ (nếu có)
+            $this->processReservationQueue($book);
+
+            return [
+                'success' => true,
+                'message' => 'Đã hủy yêu cầu mượn quá hạn và hoàn tiền (trừ phí 1 ngày)',
+                'refunded_amount' => $refundAmount,
+                'penalty_fee' => $oneDayFee,
             ];
         });
     }

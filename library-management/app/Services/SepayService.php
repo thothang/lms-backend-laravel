@@ -36,7 +36,7 @@ class SepayService
             // Use public callback URL if available (for ngrok/production)
             $frontendUrl = env('PUBLIC_CALLBACK_URL') 
                 ? env('PUBLIC_CALLBACK_URL') 
-                : config('app.frontend_url', 'http://localhost:5173');
+                : config('services.frontend_url', 'http://localhost:8080');
 
             $checkoutData = CheckoutBuilder::make()
                 ->currency('VND')
@@ -116,7 +116,7 @@ class SepayService
             // Use public callback URL if available (for ngrok/production)
             $frontendUrl = env('PUBLIC_CALLBACK_URL') 
                 ? env('PUBLIC_CALLBACK_URL') 
-                : config('app.frontend_url', 'http://localhost:5173');
+                : config('services.frontend_url', 'http://localhost:8080');
 
             $checkoutData = CheckoutBuilder::make()
                 ->currency('VND')

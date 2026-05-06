@@ -29,6 +29,9 @@ return [
     // Số ngày mượn mặc định
     'default_borrow_days' => env('DEFAULT_BORROW_DAYS', 9),
 
+    // Số ngày chờ nhận sách tối đa
+    'pending_pickup_expiry_days' => env('PENDING_PICKUP_EXPIRY_DAYS', 1),
+
     // Hệ số phạt quá hạn (nhân với daily_fee)
     'overdue_penalty_multiplier' => env('OVERDUE_PENALTY_MULTIPLIER', 1.5),
 
