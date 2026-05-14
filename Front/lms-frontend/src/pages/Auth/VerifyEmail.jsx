@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, XCircle, Loader2, Mail } from 'lucide-react';
-import api from '../../services/api';
 import { tokenManager } from '../../services/tokenManager';
+import { useVerifyEmail } from '../../hooks/queries';
 import { toast } from 'sonner';
 
 const VerifyEmail = () => {
@@ -12,49 +12,43 @@ const VerifyEmail = () => {
   const [status, setStatus] = useState('loading'); // loading, success, error
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    const verifyEmail = async () => {
-      try {
-        const response = await api.get(`/verify-email/${token}`);
-        
-        if (response.data.access_token) {
-          // Auto-login after verification using tokenManager
-          tokenManager.updateAuth(
-            response.data.access_token,
-            response.data.user,
-            response.data.user?.balance
-          );
-          
-          toast.success('Xác thực email thành công! Bạn đã được đăng nhập tự động.');
-          setStatus('success');
-          setMessage('Xác thực email thành công! Tài khoản của bạn đã được kích hoạt.');
-          
-          // Force reload to ensure AuthContext picks up new user data
-          setTimeout(() => {
-            window.location.replace('/');
-          }, 2000);
-        } else {
-          setStatus('success');
-          setMessage(response.data.message || 'Xác thực email thành công! Vui lòng đăng nhập để tiếp tục.');
-          
-          setTimeout(() => {
-            navigate('/login', { state: { verified: true } });
-          }, 3000);
-        }
-      } catch (err) {
-        setStatus('error');
-        setMessage(err.response?.data?.message || 'Link xác thực không hợp lệ hoặc đã hết hạn.');
-        toast.error(err.response?.data?.message || 'Link xác thực không hợp lệ hoặc đã hết hạn.');
-      }
-    };
+  const { data: result, isLoading: isVerifying, error: verifyError } = useVerifyEmail(token);
 
-    if (token) {
-      verifyEmail();
-    } else {
+  useEffect(() => {
+    if (isVerifying) return;
+
+    if (result) {
+      if (result.access_token) {
+        // Auto-login after verification using tokenManager
+        tokenManager.updateAuth(
+          result.access_token,
+          result.user,
+          result.user?.balance
+        );
+        
+        toast.success('Xác thực email thành công! Bạn đã được đăng nhập tự động.');
+        setStatus('success');
+        setMessage('Xác thực email thành công! Tài khoản của bạn đã được kích hoạt.');
+        
+        // Force reload to ensure AuthContext picks up new user data
+        setTimeout(() => {
+          window.location.replace('/');
+        }, 2000);
+      } else {
+        setStatus('success');
+        setMessage(result.message || 'Xác thực email thành công! Vui lòng đăng nhập để tiếp tục.');
+        
+        setTimeout(() => {
+          navigate('/login', { state: { verified: true } });
+        }, 3000);
+      }
+    } else if (verifyError) {
       setStatus('error');
-      setMessage('Token xác thực không được cung cấp.');
+      const errMsg = verifyError.response?.data?.message || 'Link xác thực không hợp lệ hoặc đã hết hạn.';
+      setMessage(errMsg);
+      toast.error(errMsg);
     }
-  }, [token, navigate]);
+  }, [result, isVerifying, verifyError, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">

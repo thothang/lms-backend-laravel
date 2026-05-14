@@ -20,7 +20,7 @@ class BorrowRecord extends Model
         'borrow_date',
         'actual_pickup_date',
         'due_date',
-        'return_date',
+        'actual_return_date',
         'daily_fee_applied',
         'deposit_amount',
         'prepaid_amount',
@@ -35,7 +35,7 @@ class BorrowRecord extends Model
             'borrow_date' => 'datetime',
             'actual_pickup_date' => 'datetime',
             'due_date' => 'datetime',
-            'return_date' => 'datetime',
+            'actual_return_date' => 'datetime',
             'daily_fee_applied' => 'decimal:2',
             'deposit_amount' => 'decimal:2',
             'prepaid_amount' => 'decimal:2',
@@ -79,7 +79,7 @@ class BorrowRecord extends Model
         }
 
         $borrowDate = $this->borrow_date->startOfDay();
-        $returnDate = ($this->return_date ?? Carbon::now())->startOfDay();
+        $returnDate = ($this->actual_return_date ?? Carbon::now())->startOfDay();
         $dueDate = $this->due_date->startOfDay();
 
         // Total calendar days (Monday to Monday = 1 day, Monday to Tuesday = 2 days)

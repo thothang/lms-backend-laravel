@@ -11,7 +11,7 @@ const ManageReservations = () => {
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showReservationModal, setShowReservationModal] = useState(false);
 
-  const { data: rawReservations, isLoading, refetch } = useLibrarianReservations({
+  const { data: rawReservations, isLoading } = useLibrarianReservations({
     limit: 100,
     ...(filter !== 'all' ? { status: filter } : {}),
   });
@@ -24,7 +24,9 @@ const ManageReservations = () => {
   const handleConfirm = (id) => {
     setProcessingId(id);
     confirmReservation.mutate(id, {
-      onSettled: () => setProcessingId(null),
+      onSettled: () => {
+        setProcessingId(null);
+      },
     });
   };
 

@@ -121,7 +121,7 @@ const HeroCarousel = ({ slides = [], isLoading = true }) => {
         )}
 
         {/* Indicators */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex gap-2" role="tablist" aria-label="Điều khiển carousel">
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -129,7 +129,9 @@ const HeroCarousel = ({ slides = [], isLoading = true }) => {
               className={`h-1.5 rounded-full transition-all duration-300 ${
                 idx === currentIndex ? 'w-8 bg-indigo-500' : 'w-4 bg-white/40 hover:bg-white/60'
               }`}
-              aria-label={`Go to slide ${idx + 1}`}
+              role="tab"
+              aria-selected={idx === currentIndex}
+              aria-label={`Chuyển đến slide ${idx + 1}`}
             />
           ))}
         </div>

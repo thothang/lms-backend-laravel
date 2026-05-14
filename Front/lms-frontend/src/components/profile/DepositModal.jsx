@@ -5,32 +5,32 @@ import { Coins, ArrowRight, Wallet2 } from 'lucide-react';
 import { Input } from '../ui/Input';
 import api from '../../services/api';
 
+import { useDeposit } from '../../hooks/queries';
+import { useQueryClient } from '@tanstack/react-query';
+
 const DepositModal = ({ isOpen, onClose }) => {
+  const queryClient = useQueryClient();
   const [amount, setAmount] = useState('100000');
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  
+  const depositMutation = useDeposit();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (depositMutation.isPending) return;
     
     if (!amount || isNaN(amount) || Number(amount) < 10000) {
       setError('Số tiền tối thiểu nạp là 10.000 ₫');
       return;
     }
     setError('');
-    setIsLoading(true);
-
     try {
-      const response = await api.post('/topup', { amount: Number(amount) });
+      const response = await depositMutation.mutateAsync(Number(amount));
       const { checkout_url, form_fields } = response.data;
 
       if (!checkout_url || !form_fields) {
         throw new Error('Invalid response from server: missing checkout_url or form_fields');
       }
-
-      // Clear cache cho balance để reload dữ liệu mới nhất sau khi nạp thành công
-      api.clearCacheByPattern('/balance');
 
       // Store amount for confirmation
       // Store in both sessionStorage and localStorage for mobile compatibility
@@ -70,7 +70,6 @@ const DepositModal = ({ isOpen, onClose }) => {
         || 'Có lỗi xảy ra. Vui lòng thử lại.';
       
       setError(errorMessage);
-      setIsLoading(false);
     }
   };
   const quickAmounts = [50000, 100000, 200000, 500000, 1000000];
@@ -127,7 +126,7 @@ const DepositModal = ({ isOpen, onClose }) => {
             * Sau khi nhấn nạp tiền, bạn sẽ được chuyển hướng sang trang thanh toán của SePay để thực hiện giao dịch an toàn.
           </p>
 
-          <Button type="submit" isLoading={isLoading} className="w-full py-4 text-base rounded-2xl shadow-xl shadow-indigo-600/20">
+          <Button type="submit" isLoading={depositMutation.isPending} className="w-full py-4 text-base rounded-2xl shadow-xl shadow-indigo-600/20">
             Tiếp tục nạp tiền <ArrowRight size={20} className="ml-2" />
           </Button>
         </form>      </div>

@@ -202,7 +202,7 @@ const BookDetailsPage = () => {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
           >
-            <Link to="/catalog" className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-indigo-600 mb-6 transition-colors">
+            <Link to="/catalog" className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-indigo-600 mb-6 transition-colors" aria-label="Quay lại danh mục sách">
               <ArrowLeft className="mr-2 h-4 w-4" /> Quay lại danh mục
             </Link>
           </motion.div>
@@ -296,15 +296,23 @@ const BookDetailsPage = () => {
               </div>
 
               {/* TABS */}
-              <div className="border-b border-slate-200 mb-6">
+              <div className="border-b border-slate-200 mb-6" role="tablist" aria-label="Nội dung sách">
                 <nav className="flex gap-6">
-                   <button 
+                   <button
+                     role="tab"
+                     aria-selected={activeTab === 'description'}
+                     aria-controls="tab-description"
+                     id="tab-description-btn"
                      onClick={() => setActiveTab('description')}
                      className={`pb-3 font-semibold text-sm transition-colors border-b-2 ${activeTab === 'description' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
                    >
                      Mô tả
                    </button>
-                   <button 
+                   <button
+                     role="tab"
+                     aria-selected={activeTab === 'reviews'}
+                     aria-controls="tab-reviews"
+                     id="tab-reviews-btn"
                      onClick={() => setActiveTab('reviews')}
                      className={`pb-3 font-semibold text-sm transition-colors border-b-2 ${activeTab === 'reviews' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
                    >
@@ -316,7 +324,10 @@ const BookDetailsPage = () => {
                <div className="min-h-[140px] mb-8">
                   {/* TAB CONTENT: Description */}
                   {activeTab === 'description' && (
-                    <div 
+                    <div
+                      id="tab-description"
+                      role="tabpanel"
+                      aria-labelledby="tab-description-btn"
                       className="prose prose-slate prose-sm max-w-none text-slate-600 leading-relaxed" 
                       dangerouslySetInnerHTML={{ 
                         __html: DOMPurify.sanitize(data.description || 'Chưa có mô tả cho cuốn sách này.') 
@@ -326,7 +337,7 @@ const BookDetailsPage = () => {
 
                   {/* TAB CONTENT: Reviews */}
                   {activeTab === 'reviews' && (
-                    <div className="space-y-6">
+                    <div id="tab-reviews" role="tabpanel" aria-labelledby="tab-reviews-btn" className="space-y-6">
                       {reviews.length > 0 ? (
                         <div className="space-y-4">
                            {reviews.map((rv, idx) => (
@@ -351,19 +362,24 @@ const BookDetailsPage = () => {
                         <div className="mt-8 pt-6 border-t border-slate-200">
                           <h4 className="font-bold text-slate-800 mb-4 text-sm">Gửi đánh giá của bạn</h4>
                           <form onSubmit={submitReview} className="space-y-4">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" role="radiogroup" aria-label="Chọn số sao đánh giá">
                               {[1, 2, 3, 4, 5].map(starValue => (
                                 <button
                                   key={starValue}
                                   type="button"
+                                  role="radio"
+                                  aria-checked={starValue <= ratingInput}
+                                  aria-label={`${starValue} sao`}
                                   onClick={() => setRatingInput(starValue)}
-                                  className="transition-transform hover:scale-110 focus:outline-none"
+                                  className="transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
                                 >
-                                  <Star className={`h-6 w-6 ${starValue <= ratingInput ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                                  <Star className={`h-6 w-6 ${starValue <= ratingInput ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} aria-hidden="true" />
                                 </button>
                               ))}
                             </div>
+                            <label htmlFor="review-comment" className="block text-sm font-medium text-slate-700 mb-1.5">Nhận xét của bạn</label>
                             <textarea
+                              id="review-comment"
                               rows="3"
                               className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white font-sans text-slate-700"
                               placeholder="Chia sẻ cảm nhận của bạn về cuốn sách này..."

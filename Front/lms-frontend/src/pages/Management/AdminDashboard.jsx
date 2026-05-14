@@ -13,6 +13,7 @@ import api from '../../services/api';
 import { motion } from 'framer-motion';
 import VirtualTable from '../../components/ui/VirtualTable';
 import DetailModal from '../../components/ui/DetailModal';
+import { Skeleton, SkeletonRow } from '../../components/ui/Skeleton';
 
 // Animation variants
 const containerVariants = {
@@ -207,13 +208,6 @@ const AdminDashboard = () => {
     };
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
 
   return (
     <motion.div
@@ -240,7 +234,12 @@ const AdminDashboard = () => {
 
       {/* Stats Grid — 3 cols on large, 2 on md */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {statCards.map((card, idx) => (
+        {isLoading ? (
+          [1,2,3,4,5,6].map(i => (
+            <Skeleton key={i} className="h-32 rounded-3xl" />
+          ))
+        ) : (
+          statCards.map((card, idx) => (
           <motion.div
             key={card.title}
             initial={{ opacity: 0, y: 20 }}
@@ -258,7 +257,8 @@ const AdminDashboard = () => {
               <span>{card.trend}</span>
             </div>
           </motion.div>
-        ))}
+          ))
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -287,14 +287,14 @@ const AdminDashboard = () => {
                    <div className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Số dư hiện tại</div>
                    <div className="text-xl font-black text-indigo-700 mt-1">{Number(revenueData?.earnings_balance || 0).toLocaleString('vi-VN')} ₫</div>
                  </div>
-                 <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
-                   <div className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Đã chi / rút</div>
-                   <div className="text-xl font-black text-amber-700 mt-1">{Number(revenueData?.withdrawn || 0).toLocaleString('vi-VN')} ₫</div>
-                 </div>
-                 <div className="bg-violet-50 rounded-2xl p-4 border border-violet-100">
-                   <div className="text-[9px] font-black text-violet-500 uppercase tracking-widest">Có thể rút</div>
-                   <div className="text-xl font-black text-violet-700 mt-1">{Number(revenueData?.available_to_withdraw || 0).toLocaleString('vi-VN')} ₫</div>
-                 </div>
+                  <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+                    <div className="text-[9px] font-black text-amber-500 uppercase tracking-widest">Đã chi / rút</div>
+                    <div className="text-xl font-black text-amber-700 mt-1">{Number(revenueData?.withdrawn || 0).toLocaleString('vi-VN')} ₫</div>
+                  </div>
+                  <div className="bg-violet-50 rounded-2xl p-4 border border-violet-100">
+                    <div className="text-[9px] font-black text-violet-500 uppercase tracking-widest">Có thể rút</div>
+                    <div className="text-xl font-black text-violet-700 mt-1">{Number(revenueData?.available_to_withdraw || 0).toLocaleString('vi-VN')} ₫</div>
+                  </div>
                </div>
 
                {/* Revenue Breakdown Table */}
@@ -307,7 +307,15 @@ const AdminDashboard = () => {
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                     {(() => {
+                     {isLoading ? (
+                        [1,2,3,4,5,6].map(i => (
+                          <tr key={i}>
+                            <td className="px-5 py-4"><Skeleton className="h-8 w-32 rounded-lg" /></td>
+                            <td className="px-5 py-4"><Skeleton className="h-6 w-20 rounded-lg ml-auto" /></td>
+                            <td className="px-5 py-4"><Skeleton className="h-4 w-12 rounded-lg ml-auto" /></td>
+                          </tr>
+                        ))
+                     ) : (() => {
                         const breakdown = revenueData?.breakdown || {};
                         const totalIncome = breakdown.total_income || overview.total_revenue || 1;
                         const sources = [
@@ -343,11 +351,13 @@ const AdminDashboard = () => {
                            );
                         });
                      })()}
-                     <tr className="bg-slate-50/80">
-                       <td className="px-5 py-4 font-black text-slate-800 text-sm">Tổng cộng</td>
-                       <td className="px-5 py-4 text-right font-black text-emerald-700 text-base">{Number(revenueData?.breakdown?.total_income || overview.total_revenue || 0).toLocaleString('vi-VN')} ₫</td>
-                       <td className="px-5 py-4 text-right font-black text-slate-500 text-xs">100%</td>
-                     </tr>
+                     {!isLoading && (
+                       <tr className="bg-slate-50/80">
+                         <td className="px-5 py-4 font-black text-slate-800 text-sm">Tổng cộng</td>
+                         <td className="px-5 py-4 text-right font-black text-emerald-700 text-base">{Number(revenueData?.breakdown?.total_income || overview.total_revenue || 0).toLocaleString('vi-VN')} ₫</td>
+                         <td className="px-5 py-4 text-right font-black text-slate-500 text-xs">100%</td>
+                       </tr>
+                     )}
                   </tbody>
                </table>
              </div>
@@ -438,6 +448,7 @@ const AdminDashboard = () => {
         <div className="p-4">
           <VirtualTable
             data={transactions}
+            isLoading={transactionsQuery.isLoading}
             height={400}
             rowHeight={80}
             onRowClick={(trans) => {
@@ -553,6 +564,7 @@ const AdminDashboard = () => {
         <div className="p-4">
           <VirtualTable
             data={recentBorrows}
+            isLoading={borrowsQuery.isLoading}
             height={400}
             rowHeight={70}
             onRowClick={(borrow) => {
@@ -598,16 +610,29 @@ const AdminDashboard = () => {
               {
                 header: 'Tình trạng',
                 key: 'status',
-                flex: 1,
-                minWidth: 100,
+                flex: 1.5,
+                minWidth: 120,
                 render: (borrow) => {
-                  const isOverdue = borrow.status === 'overdue' || (new Date(borrow.due_date) < new Date() && borrow.status === 'borrowed');
+                  // Determine actual display status based on both status and due_date
+                  const isOverdueByStatus = borrow.status === 'overdue';
+                  const isOverdueByDate = ['active', 'borrowed'].includes(borrow.status) && borrow.due_date && new Date(borrow.due_date) < new Date();
+
                   if (borrow.status === 'returned') {
                     return <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">Đã trả</span>;
-                  } else if (isOverdue) {
+                  } else if (borrow.status === 'cancelled') {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-1 rounded border border-slate-200">Đã hủy</span>;
+                  } else if (borrow.status === 'lost') {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100">Mất sách</span>;
+                  } else if (borrow.status === 'pending_pickup') {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">Chờ nhận</span>;
+                  } else if (borrow.status === 'pending_return') {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-100">Chờ thanh toán</span>;
+                  } else if (isOverdueByStatus || isOverdueByDate) {
                     return <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100">Quá hạn</span>;
-                  } else {
+                  } else if (['active', 'borrowed'].includes(borrow.status)) {
                     return <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">Đang mượn</span>;
+                  } else {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-1 rounded border border-slate-200">{borrow.status}</span>;
                   }
                 }
               },
@@ -720,7 +745,7 @@ const AdminDashboard = () => {
           setSelectedLog(null);
         }}
         data={selectedLog}
-        type="user"
+        type="log"
       />
     </motion.div>
   );

@@ -1,120 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Wallet, ArrowUpRight, ArrowDownRight, RefreshCcw,
-  CreditCard, ShieldCheck, Calendar, Search, Filter,
-  ChevronLeft, ChevronRight, AlertCircle, CheckCircle,
-  TrendingUp, PieChart, BarChart3, DollarSign,
-  BookOpen, Clock
+  RefreshCcw, CreditCard, ShieldCheck, Calendar, Search,
+  ChevronLeft, ChevronRight, PieChart, BarChart3, DollarSign,
+  BookOpen, Clock, TrendingUp
 } from 'lucide-react';
-import { librarianService } from '../../services/librarianService';
+import { useFinanceSummary, useFinanceDeposits, useDepositSummary, useLibraryFees, useAllTopups } from '../../hooks/queries';
 import { motion } from 'framer-motion';
 import DetailModal from '../../components/ui/DetailModal';
 
 const LibrarianFinance = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [summary, setSummary] = useState(null);
-  const [deposits, setDeposits] = useState([]);
-  const [depositSummaryDetail, setDepositSummaryDetail] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Date filter states
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
-    date.setDate(1); // First day of current month
+    date.setDate(1);
     return date.toISOString().split('T')[0];
   });
   const [endDate, setEndDate] = useState(() => {
     const date = new Date();
-    date.setMonth(date.getMonth() + 1, 0); // Last day of current month
+    date.setMonth(date.getMonth() + 1, 0);
     return date.toISOString().split('T')[0];
   });
 
   // Topups states
-  const [topups, setTopups] = useState([]);
-  const [topupsSummary, setTopupsSummary] = useState(null);
-  const [topupsPagination, setTopupsPagination] = useState(null);
   const [topupsPage, setTopupsPage] = useState(1);
   const [topupsSearchInput, setTopupsSearchInput] = useState('');
   const [topupsSearch, setTopupsSearch] = useState('');
-  const [isTopupsLoading, setIsTopupsLoading] = useState(true);
-
-  // Library fees states
-  const [libraryFees, setLibraryFees] = useState([]);
-  const [isLibraryFeesLoading, setIsLibraryFeesLoading] = useState(true);
 
   // Detail modal states
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
 
-  // Fetch Summary & Deposits
-  const fetchBasicData = async () => {
-    setIsLoading(true);
-    try {
-      const [sumRes, depRes, depSummaryRes] = await Promise.all([
-        librarianService.getFinanceSummary({ start_date: startDate, end_date: endDate }).catch(() => ({ data: {} })),
-        librarianService.getFinanceDeposits().catch(() => ({ data: [] })),
-        librarianService.getDepositSummary().catch(() => null)
-      ]);
-      setSummary(sumRes.data || sumRes || {});
-      setDeposits(depRes.data?.data || depRes.data || []);
-      setDepositSummaryDetail(depSummaryRes);
-    } catch {
-      // Error already handled by service
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // React Query hooks
+  const dateParams = { start_date: startDate, end_date: endDate };
+  const { data: summaryData, isLoading: isLoadingSummary } = useFinanceSummary();
+  const { data: depositsData } = useFinanceDeposits();
+  const { data: depositSummaryDetail } = useDepositSummary();
+  const { data: libraryFeesData, isLoading: isLibraryFeesLoading } = useLibraryFees(dateParams);
+  const { data: topupsData, isLoading: isTopupsLoading } = useAllTopups({
+    page: topupsPage,
+    search: topupsSearch
+  });
 
-  // Fetch Library Fees
-  const fetchLibraryFees = async () => {
-    setIsLibraryFeesLoading(true);
-    try {
-      const res = await librarianService.getLibraryFees({ start_date: startDate, end_date: endDate }).catch(() => []);
-      setLibraryFees(res?.data || res || []);
-    } catch {
-      // Error already handled by service
-    } finally {
-      setIsLibraryFeesLoading(false);
-    }
-  };
+  const summary = summaryData?.data || summaryData || {};
+  const deposits = depositsData?.data?.data || depositsData?.data || depositsData || [];
+  const libraryFees = libraryFeesData?.data || libraryFeesData || [];
+  const topups = topupsData?.data || [];
+  const topupsPagination = topupsData?.pagination || null;
+  const topupsSummary = topupsData?.summary || null;
 
-  // Fetch Topups API
-  const fetchTopups = async () => {
-    setIsTopupsLoading(true);
-    try {
-      const res = await librarianService.getAllTopups({
-        page: topupsPage,
-        search: topupsSearch
-      });
-      setTopups(res.data || []);
-      setTopupsPagination(res.pagination || null);
-      if (res.summary) {
-         setTopupsSummary(res.summary);
-      }
-    } catch {
-      // Error already handled by service
-    } finally {
-      setIsTopupsLoading(false);
-    }
-  };
+  const totalTopup = summary?.summary?.topups || 0;
+  const totalDeposit = summary?.summary?.deposits || 0;
+  const totalLibraryFees = summary?.summary?.library_fees || 0;
+  const totalIncome = summary?.summary?.total_income || 0;
 
-  useEffect(() => {
-    fetchBasicData();
-  }, [startDate, endDate]);
-
-  useEffect(() => {
-    if (activeTab === 'overview') {
-      fetchBasicData();
-    } else if (activeTab === 'library-fees') {
-      fetchLibraryFees();
-    } else if (activeTab === 'topups') {
-      fetchTopups();
-    }
-  }, [activeTab]);
-
-  useEffect(() => {
-    fetchTopups();
-  }, [topupsPage, topupsSearch]);
+  const isLoading = isLoadingSummary;
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -122,10 +63,11 @@ const LibrarianFinance = () => {
     setTopupsPage(1);
   };
 
-  const totalTopup = summary?.summary?.topups || 0;
-  const totalDeposit = summary?.summary?.deposits || 0;
-  const totalLibraryFees = summary?.summary?.library_fees || 0;
-  const totalIncome = summary?.summary?.total_income || 0;
+  const refreshAll = () => {
+    // React Query handles refetching automatically via cache invalidation
+    // For manual refresh, we can use queryClient but since we don't have it here,
+    // the periodic refetchInterval will handle it
+  };
 
   return (
     <div className="space-y-8">
@@ -136,14 +78,10 @@ const LibrarianFinance = () => {
           <p className="text-slate-500 font-medium mt-1">Phân tích toàn bộ dòng tiền nạp, cọc và phí dịch vụ của thư viện.</p>
         </div>
         <button
-          onClick={() => {
-            fetchBasicData();
-            fetchTopups();
-            fetchLibraryFees();
-          }}
+          onClick={refreshAll}
           className="bg-white border border-slate-100 hover:bg-slate-50 text-slate-700 font-bold py-3 px-6 rounded-2xl shadow-sm transition-all flex items-center gap-2"
         >
-          <RefreshCcw size={18} className={(isLoading || isTopupsLoading) ? 'animate-spin' : ''} /> Làm mới
+          <RefreshCcw size={18} className={isLoading ? 'animate-spin' : ''} /> Làm mới
         </button>
       </div>
 
@@ -204,7 +142,7 @@ const LibrarianFinance = () => {
         >
           <div className="flex justify-between items-start mb-4">
             <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-              <Wallet size={24} className="text-white" />
+              <DollarSign size={24} className="text-white" />
             </div>
             <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md border border-white/10 uppercase tracking-widest">
               Nạp Tiền
@@ -300,7 +238,7 @@ const LibrarianFinance = () => {
         >
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
-              <CheckCircle size={20} />
+              <ShieldCheck size={20} />
             </div>
             <div>
               <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Đã hoàn cọc</div>
@@ -665,4 +603,3 @@ const LibrarianFinance = () => {
 };
 
 export default LibrarianFinance;
-

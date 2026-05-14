@@ -596,6 +596,7 @@ const Navbar = () => {
               <button 
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                aria-label="Đóng menu"
               >
                 <X size={24} />
               </button>
@@ -732,6 +733,7 @@ const Navbar = () => {
                 <button
                   onClick={() => setSelectedNotification(null)}
                   className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400"
+                  aria-label="Đóng thông báo"
                 >
                   <X size={20} />
                 </button>
@@ -793,6 +795,7 @@ const Navbar = () => {
                 <button
                   onClick={() => setShowAllNotifications(false)}
                   className="p-2 hover:bg-white rounded-full transition-colors text-slate-400"
+                  aria-label="Đóng danh sách thông báo"
                 >
                   <X size={20} />
                 </button>

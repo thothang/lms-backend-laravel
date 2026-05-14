@@ -7,6 +7,7 @@ import SearchInput from '../../components/ui/SearchInput';
 import Pagination from '../../components/ui/Pagination';
 import { usePagination } from '../../hooks/usePagination';
 import DetailModal from '../../components/ui/DetailModal';
+import { handleApiError } from '../../utils/toastHelper';
 import { useUsers, useUpdateUserStatus, useMakeAuthor } from '../../hooks/queries';
 
 const ManageUsers = () => {
@@ -15,7 +16,7 @@ const ManageUsers = () => {
   const [showUserModal, setShowUserModal] = useState(false);
   
   // React Query hooks
-  const { data: usersData, isLoading } = useUsers();
+  const { data: usersData, isLoading, refetch } = useUsers();
   const updateStatusMutation = useUpdateUserStatus();
   const makeAuthorMutation = useMakeAuthor();
 

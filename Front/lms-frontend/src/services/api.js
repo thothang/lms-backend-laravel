@@ -16,7 +16,7 @@ const api = axios.create({
 
 // Cache storage
 const apiCache = new Map();
-const CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours default
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes (was 2 hours)
 
 // List of endpoints that should NEVER be cached
 const CACHE_BLACKLIST = [

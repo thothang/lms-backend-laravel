@@ -5,9 +5,8 @@ import {
   User, ShieldCheck
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { librarianService } from '../../services/librarianService';
-import { useCategories } from '../../hooks/queries';
-import { handleApiError, showSuccess } from '../../utils/toastHelper';
+import { useCategories, useUploadEbook } from '../../hooks/queries';
+import { handleApiError } from '../../utils/toastHelper';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
@@ -24,9 +23,9 @@ const LibrarianUploadEbook = () => {
   });
   
   const [previews, setPreviews] = useState({ file: null, cover: null });
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { data: categories = [] } = useCategories();
+  const uploadMutation = useUploadEbook();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -60,7 +59,6 @@ const LibrarianUploadEbook = () => {
       return;
     }
 
-    setIsLoading(true);
     const data = new FormData();
     data.append('title', formData.title);
     data.append('category_id', formData.category_id);
@@ -78,15 +76,10 @@ const LibrarianUploadEbook = () => {
     data.append('uploaded_by_admin', 1);
 
     try {
-      await librarianService.uploadEbook(data);
-      showSuccess('Ebook đã được đăng tải và xuất bản thành công!');
-      // Clear API cache cho ebooks để dashboard hiển thị ebook mới
-      api.clearCacheByPattern('/ebooks');
+      await uploadMutation.mutateAsync(data);
       navigate('/librarian/books');
     } catch (err) {
-      handleApiError(err, 'Lỗi khi tải lên Ebook.');
-    } finally {
-      setIsLoading(false);
+      // Error handled by mutation
     }
   };
 
@@ -248,10 +241,10 @@ const LibrarianUploadEbook = () => {
 
           <Button 
             type="submit" 
-            isLoading={isLoading}
+            isLoading={uploadMutation.isPending}
             className="w-full py-5 rounded-3xl text-lg shadow-xl shadow-indigo-100 font-black h-auto tracking-tight"
           >
-            {isLoading ? <Loader2 className="animate-spin" /> : <><ShieldCheck className="mr-2" /> Xuất bản ngay</>}
+            {uploadMutation.isPending ? <Loader2 className="animate-spin" /> : <><ShieldCheck className="mr-2" /> Xuất bản ngay</>}
           </Button>
           
           <div className="flex gap-4 p-4 bg-violet-50 rounded-2xl border border-violet-100">

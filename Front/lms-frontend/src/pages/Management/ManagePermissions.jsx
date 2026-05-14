@@ -22,7 +22,6 @@ const PERMISSION_LABELS = {
 };
 
 const ManagePermissions = () => {
-  const [librarians, setLibrarians] = useState([]);
   const [savingId, setSavingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -31,7 +30,12 @@ const ManagePermissions = () => {
   const [editedPermissions, setEditedPermissions] = useState({});
 
   // React Query for fetching permissions
-  const { isLoading, refetch } = useLibrarianPermissions();
+  const { data: rawLibrarians, isLoading, refetch } = useLibrarianPermissions();
+
+  // Chuyển đổi dữ liệu từ Laravel Pagination hoặc Array thường
+  const librarians = useMemo(() => {
+    return Array.isArray(rawLibrarians) ? rawLibrarians : (rawLibrarians?.data || []);
+  }, [rawLibrarians]);
 
   // React Query mutation for updating permissions
   const updatePermissionsMutation = useUpdatePermissions();
@@ -44,17 +48,10 @@ const ManagePermissions = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const fetchPermissions = async () => {
-    const res = await refetch();
-    if (res.data) {
-      setLibrarians(res.data.data || res.data || []);
-      setEditedPermissions({});
-    }
+  const fetchPermissions = () => {
+    refetch();
+    setEditedPermissions({});
   };
-
-  useEffect(() => {
-    fetchPermissions();
-  }, []);
 
   const handleToggle = (librarianId, permKey) => {
     setEditedPermissions(prev => {
@@ -105,12 +102,6 @@ const ManagePermissions = () => {
         userId: librarianId,
         permissions: mergedPermissions
       });
-      showSuccess(`Đã cập nhật quyền cho ${librarian.name}`);
-      
-      // Update local state with the merged permissions
-      setLibrarians(prev => prev.map(l => 
-        l.id === librarianId ? { ...l, permissions: mergedPermissions } : l
-      ));
       // Clear edited state for this librarian
       setEditedPermissions(prev => {
         const next = { ...prev };

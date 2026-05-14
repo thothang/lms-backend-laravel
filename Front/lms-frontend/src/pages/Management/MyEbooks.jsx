@@ -4,17 +4,15 @@ import {
   MoreVertical, CheckCircle, Clock, AlertCircle,
   FileText, Download, ExternalLink
 } from 'lucide-react';
-import { authorService } from '../../services/authorService';
-import { handleApiError, showSuccess } from '../../utils/toastHelper';
+import { handleApiError } from '../../utils/toastHelper';
 import { getImageUrl } from '../../utils/imageHelper';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import EditEbookModal from './EditEbookModal';
 import DetailModal from '../../components/ui/DetailModal';
+import { useAuthorEbooks, useDeleteAuthorEbook } from '../../hooks/queries';
 
 const MyEbooks = () => {
-  const [ebooks, setEbooks] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -31,21 +29,11 @@ const MyEbooks = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  useEffect(() => {
-    fetchEbooks();
-  }, []);
+  // React Query - data comes directly from cache
+  const { data: ebooksData, isLoading } = useAuthorEbooks();
+  const deleteMutation = useDeleteAuthorEbook();
 
-  const fetchEbooks = async () => {
-    setIsLoading(true);
-    try {
-      const res = await authorService.getEbooks();
-      setEbooks(res.data || res || []);
-    } catch (err) {
-      handleApiError(err, 'Không thể tải danh sách Ebook.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const ebooks = ebooksData?.data || ebooksData || [];
 
   const filteredEbooks = useMemo(() => {
     return ebooks.filter(item => {
@@ -55,15 +43,13 @@ const MyEbooks = () => {
     });
   }, [ebooks, debouncedSearchTerm, filterStatus]);
 
-  const handleDeleteEbook = async (id) => {
+  const handleDeleteEbook = (id) => {
     if (!window.confirm("Bạn có chắc chắn muốn xóa Ebook này không? Tác vụ này không thể hoàn tác.")) return;
-    try {
-      await authorService.deleteEbook(id);
-      showSuccess("Đã xóa Ebook thành công.");
-      fetchEbooks();
-    } catch (err) {
-      handleApiError(err, "Không thể xóa Ebook.");
-    }
+    deleteMutation.mutate(id, {
+      onError: (err) => {
+        handleApiError(err, "Không thể xóa Ebook.");
+      }
+    });
   };
 
   const getStatusBadge = (status) => {
@@ -240,7 +226,6 @@ const MyEbooks = () => {
             setSelectedEbook(null);
           }}
           ebook={selectedEbook}
-          onUpdateSuccess={fetchEbooks}
         />
       )}
 

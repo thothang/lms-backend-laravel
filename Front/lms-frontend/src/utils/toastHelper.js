@@ -7,7 +7,7 @@ import { toast } from 'sonner';
  * @param {string} defaultMessage - Fallback message if error can't be parsed
  */
 export const handleApiError = (error, defaultMessage = 'Đã có lỗi xảy ra.') => {
-  if (error.response) {
+  if (error?.response) {
     const { status, data } = error.response;
 
     // 1. Handle Laravel Validation Errors (422)
@@ -34,47 +34,54 @@ export const handleApiError = (error, defaultMessage = 'Đã có lỗi xảy ra.
       return;
     }
 
-    // 2. Handle Authentication Errors (401)
+    // 2. Handle Bad Request (400) - Business logic errors from backend
+    if (status === 400) {
+      const msg = data.error || data.message || defaultMessage;
+      toast.error(msg, { id: `400_${msg}` });
+      return;
+    }
+
+    // 3. Handle Authentication Errors (401)
     if (status === 401) {
       toast.error('Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.', { id: 'auth_err' });
       return;
     }
 
-    // 3. Handle Permission Errors (403)
+    // 4. Handle Permission Errors (403)
     if (status === 403) {
       const msg = data.message || 'Bạn không có quyền thực hiện hành động này.';
       toast.error(msg, { id: msg });
       return;
     }
 
-    // 4. Handle Not Found (404)
+    // 5. Handle Not Found (404)
     if (status === 404) {
       toast.error('Nội dung không tồn tại hoặc đã bị xóa.', { id: 'not_found' });
       return;
     }
 
-    // 5. Handle Server Errors (500)
+    // 6. Handle Server Errors (500)
     if (status >= 500) {
       const serverMsg = data?.message || data?.error || 'Lỗi hệ thống (500). Đội ngũ kỹ thuật đang xử lý, vui lòng quay lại sau.';
       toast.error(serverMsg, { id: serverMsg });
       return;
     }
 
-    // 6. Generic data message from backend
-    if (data.message) {
-      toast.error(data.message, { id: data.message });
+    // 7. Generic data message from backend
+    if (data.message || data.error) {
+      toast.error(data.message || data.error, { id: data.message || data.error });
       return;
     }
   }
 
-  // 7. Network or local errors
-  if (error.message === 'Network Error') {
+  // 8. Network or local errors
+  if (error?.message === 'Network Error') {
     toast.error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra internet.', { id: 'network_err' });
     return;
   }
 
   // Final fallback - avoid technical strings
-  const finalMsg = (error.message && !error.message.includes('status code')) 
+  const finalMsg = (error?.message && !error.message.includes('status code')) 
     ? error.message 
     : defaultMessage;
     

@@ -6,6 +6,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBorrows, useConfirmPickup, useConfirmReturn, useCancelPickup } from '../../hooks/queries';
 import DetailModal from '../../components/ui/DetailModal';
+import { handleApiError } from '../../utils/toastHelper';
 
 const STATUS_CONFIG = {
   pending_pickup: { label: 'Chờ nhận sách', color: 'amber', icon: Clock },
@@ -44,7 +45,23 @@ const ManageBorrows = () => {
     try {
       await confirmReturn.mutateAsync(id);
     } catch (err) {
-      throw err;
+      handleApiError(err, 'Không thể xác nhận trả sách');
+    }
+  };
+
+  const handleConfirmPickup = async (id) => {
+    try {
+      await confirmPickup.mutateAsync(id);
+    } catch (err) {
+      handleApiError(err, 'Không thể xác nhận nhận sách');
+    }
+  };
+
+  const handleCancelPickup = async (id) => {
+    try {
+      await cancelPickup.mutateAsync(id);
+    } catch (err) {
+      handleApiError(err, 'Không thể hủy yêu cầu');
     }
   };
 
@@ -237,7 +254,7 @@ const ManageBorrows = () => {
                           {borrow.status === 'pending_pickup' && (
                             <>
                               <button
-                                onClick={() => confirmPickup.mutate(borrow.id)}
+                                onClick={() => handleConfirmPickup(borrow.id)}
                                 disabled={isProcessing}
                                 className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-3 py-2 text-[11px] font-bold rounded-xl shadow-md shadow-emerald-100 transition-all active:scale-95"
                               >
@@ -247,7 +264,7 @@ const ManageBorrows = () => {
                               <button
                                 onClick={() => {
                                   if (window.confirm('Bạn có chắc muốn hủy yêu cầu mượn này? Tiền sẽ được hoàn lại cho người dùng.')) {
-                                    cancelPickup.mutate(borrow.id);
+                                    handleCancelPickup(borrow.id);
                                   }
                                 }}
                                 disabled={isProcessing}

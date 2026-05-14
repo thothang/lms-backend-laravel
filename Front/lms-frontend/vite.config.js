@@ -9,87 +9,29 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'Hệ Thống Quản Lý Thư Viện',
-        short_name: 'LMS Library',
-        description: 'Hệ thống quản lý thư viện trực tuyến - Mượn sách, đọc Ebook, quản lý tài chính',
+        name: 'LMS - Quản Lý Thư Viện',
+        short_name: 'LMS',
+        description: 'Hệ thống quản lý thư viện trực tuyến - Mượn sách, đọc Ebook',
         theme_color: '#4F46E5',
-        background_color: '#F8FAFC',
+        background_color: '#ffffff',
         display: 'standalone',
-        orientation: 'portrait',
-        scope: '/',
-        start_url: '/',
-        categories: ['education', 'books', 'productivity'],
         icons: [
           {
-            src: '/pwa-192x192.png',
+            src: 'pwa-192x192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
+            purpose: 'any maskable'
           },
           {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          },
-          {
-            src: '/pwa-512x512.png',
+            src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
           }
         ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\/.*/, /^\/storage\/.*/],
-        runtimeCaching: [
-          {
-            urlPattern: /^https?:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'google-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /^https?:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'gstatic-fonts-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365 // 1 year
-              },
-              cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          },
-          {
-            urlPattern: /\/api\/.*/i,
-            handler: 'NetworkOnly',
-            options: {
-              backgroundSync: {
-                name: 'api-queue',
-                options: {
-                  maxRetentionTime: 0
-                }
-              }
-            }
-          }
-        ]
-      },
-      devOptions: {
-        enabled: false
       }
     })
   ],
@@ -99,6 +41,7 @@ export default defineConfig({
         manualChunks(id) {
           if (id.includes('node_modules')) {
             if (id.includes('react')) return 'vendor-react';
+            if (id.includes('pdfjs-dist')) return 'vendor-pdf';
             if (id.includes('axios') || id.includes('sonner') || id.includes('framer-motion') || id.includes('lucide')) return 'vendor-utils';
           }
         },
@@ -143,14 +86,23 @@ export default defineConfig({
     headers: {
       'Content-Security-Policy': [
         "default-src 'self';",
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pay-sandbox.sepay.vn https://static.cloudflareinsights.com https://cdn.jsdelivr.net;",
-        "connect-src 'self' ws://localhost:* http://localhost:* https://pay-sandbox.sepay.vn https://cdn.jsdelivr.net;",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pay-sandbox.sepay.vn https://static.cloudflareinsights.com https://cdn.jsdelivr.net https://unpkg.com;",
+        "connect-src 'self' ws://localhost:* http://localhost:* https://pay-sandbox.sepay.vn https://cdn.jsdelivr.net https://unpkg.com;",
         "img-src 'self' * data: blob:;",
-        "style-src 'self' 'unsafe-inline' https://pay-sandbox.sepay.vn https://cdn.jsdelivr.net;",
+        "style-src 'self' 'unsafe-inline' https://pay-sandbox.sepay.vn https://cdn.jsdelivr.net https://fonts.googleapis.com;",
         "font-src 'self' data: https://cdn.jsdelivr.net https://fonts.gstatic.com;",
-        "worker-src 'self' blob:;",
+        "worker-src 'self' blob: https://unpkg.com;",
         "frame-src 'self' blob:;"
-      ].join(' ')
+      ].join(' '),
+      'X-Content-Type-Options': 'nosniff',
+      'X-Frame-Options': 'DENY',
+      'X-XSS-Protection': '1; mode=block',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Permissions-Policy': 'geolocation=(), microphone=(), camera=()'
     }
+  },
+  optimizeDeps: {
+    include: ['pdfjs-dist']
   }
 })

@@ -5,7 +5,7 @@ import {
   AlertCircle, MessageSquare
 } from 'lucide-react';
 import { useWithdrawalRequests, useProcessWithdrawal } from '../../hooks/queries';
-import { handleApiError, showSuccess } from '../../utils/toastHelper';
+import { handleApiError } from '../../utils/toastHelper';
 import { motion } from 'framer-motion';
 import WithdrawalDetailsModal from './WithdrawalDetailsModal';
 

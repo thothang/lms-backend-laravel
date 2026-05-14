@@ -73,7 +73,7 @@ class ReportController extends Controller
                 $overdueBorrows = $borrowsByStatus['overdue'] ?? 0;
                 $returnedBorrows = $borrowsByStatus['returned'] ?? 0;
                 $todayBorrows = BorrowRecord::whereDate('borrow_date', $today)->count();
-                $todayReturns = BorrowRecord::whereDate('return_date', $today)->count();
+                $todayReturns = BorrowRecord::whereDate('actual_return_date', $today)->count();
                 $thisMonthBorrows = BorrowRecord::where('borrow_date', '>=', $thisMonth)->count();
 
                 // === RESERVATIONS ===
@@ -141,7 +141,7 @@ class ReportController extends Controller
                         DB::raw('DATE_FORMAT(return_date, "%Y-%m") as month'),
                         DB::raw('COUNT(*) as count')
                     )
-                    ->where('return_date', '>=', $sixMonthsAgo)
+                    ->where('actual_return_date', '>=', $sixMonthsAgo)
                     ->groupBy('month')
                     ->pluck('count', 'month');
                 

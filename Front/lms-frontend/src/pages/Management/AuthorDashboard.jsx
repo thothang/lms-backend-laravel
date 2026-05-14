@@ -11,6 +11,7 @@ import {
   useAuthorEarnings,
   useAuthorEbooks,
   useAuthorWithdrawHistory,
+  useAuthorSalesHistory,
 } from '../../hooks/queries';
 
 const AuthorDashboard = () => {
@@ -23,6 +24,7 @@ const AuthorDashboard = () => {
   // Use React Query hooks for data fetching
   const { data: ebooksData, isLoading: ebooksLoading } = useAuthorEbooks();
   const { data: earningsData, isLoading: earningsLoading } = useAuthorEarnings();
+  const { data: salesData, isLoading: salesLoading } = useAuthorSalesHistory();
 
   const ebookList = ebooksData?.data || ebooksData || [];
   const balance = earningsData?.balance || 0;
@@ -33,9 +35,10 @@ const AuthorDashboard = () => {
     totalSales: ebookList.reduce((acc, curr) => acc + (curr.purchase_count || 0), 0),
     balance: balance,
     recentActivity: ebookList.slice(0, 5),
+    salesHistory: salesData?.data || salesData || [],
   };
 
-  const isLoading = ebooksLoading || earningsLoading;
+  const isLoading = ebooksLoading || earningsLoading || salesLoading;
 
   const statCards = [
     { name: 'Tổng số Ebook', value: stats.totalEbooks, icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50' },

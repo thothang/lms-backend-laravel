@@ -12,7 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { handleApiError, showSuccess } from '../../utils/toastHelper';
 import { useAuth } from '../../context/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useBooks, useLibrarianReservations, useEbooks, useBorrows, useUpdateBookSettings, useUpdateEbookSettings } from '../../hooks/queries';
+import { useBooks, useLibrarianReservations, useEbooks, useBorrows, useUpdateBookSettings, useUpdateEbookSettings, useConfirmReservation, useContactMessageStats } from '../../hooks/queries';
 import VirtualTable from '../../components/ui/VirtualTable';
 import DetailModal from '../../components/ui/DetailModal';
 
@@ -46,10 +46,9 @@ const LibrarianDashboard = () => {
   const borrowsQuery = useBorrows({ limit: 10 });
   const activeBorrowsQuery = useBorrows({ status: 'active', limit: 200 });
 
-  const contactsQuery = useQuery({
-    queryKey: ['librarian', 'contact-messages', 'stats'],
-    queryFn: () => librarianService.getContactMessageStats().then(res => res || { pending_count: 0 }),
-  });
+  const contactsQuery = useContactMessageStats();
+
+  const confirmReservationMutation = useConfirmReservation();
 
   const isLoading = booksQuery.isLoading || reservationsQuery.isLoading || ebooksQuery.isLoading;
 
@@ -63,8 +62,10 @@ const LibrarianDashboard = () => {
   const contactStats = contactsQuery.data || { pending_count: 0 };
 
   const overdues = activeBorList.filter(b => {
-    return b.status === 'overdue' ||
-      (['active', 'borrowed'].includes(b.status) && new Date(b.due_date) < new Date());
+    // Check both 'overdue' status AND overdue by due_date
+    const isOverdueByStatus = b.status === 'overdue';
+    const isOverdueByDate = ['active', 'borrowed'].includes(b.status) && b.due_date && new Date(b.due_date) < new Date();
+    return isOverdueByStatus || isOverdueByDate;
   });
 
   const stats = {
@@ -80,17 +81,11 @@ const LibrarianDashboard = () => {
 
   const handleConfirmReservation = async (id) => {
     setIsProcessingRes(id);
-    try {
-      await librarianService.confirmReservation(id);
-      showSuccess('Xác nhận đặt trước thành công!');
-      // Invalidate relevant queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['librarian', 'reservations'] });
-      queryClient.invalidateQueries({ queryKey: ['books'] });
-    } catch (error) {
-      handleApiError(error, 'Không thể xác nhận đặt trước (Có thể hết sách khả dụng).');
-    } finally {
-      setIsProcessingRes(null);
-    }
+    confirmReservationMutation.mutate(id, {
+      onSettled: () => {
+        setIsProcessingRes(null);
+      },
+    });
   };
 
   const statCards = [
@@ -390,13 +385,26 @@ const LibrarianDashboard = () => {
                 flex: 1,
                 minWidth: 100,
                 render: (borrow) => {
-                  const isOverdue = borrow.status === 'overdue' || (new Date(borrow.due_date) < new Date() && borrow.status === 'borrowed');
+                  // Determine actual status
+                  const isOverdue = borrow.status === 'overdue' || 
+                    (['active', 'borrowed'].includes(borrow.status) && borrow.due_date && new Date(borrow.due_date) < new Date());
+                  
                   if (borrow.status === 'returned') {
                     return <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100">Đã trả</span>;
+                  } else if (borrow.status === 'cancelled') {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-1 rounded border border-slate-200">Đã hủy</span>;
+                  } else if (borrow.status === 'lost') {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100">Mất sách</span>;
+                  } else if (borrow.status === 'pending_pickup') {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">Chờ nhận</span>;
+                  } else if (borrow.status === 'pending_return') {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-100">Chờ thanh toán</span>;
                   } else if (isOverdue) {
                     return <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-1 rounded border border-rose-100">Quá hạn</span>;
-                  } else {
+                  } else if (['active', 'borrowed'].includes(borrow.status)) {
                     return <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100">Đang mượn</span>;
+                  } else {
+                    return <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-100 px-2 py-1 rounded border border-slate-200">{borrow.status}</span>;
                   }
                 }
               },

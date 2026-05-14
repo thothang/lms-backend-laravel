@@ -1,14 +1,31 @@
 import { Book, Check, X, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { catalogService } from '../../services/catalogService';
 
 const BookCard = ({ book }) => {
+  const queryClient = useQueryClient();
   const isEbook = book._type === 'ebook' || book.hasOwnProperty('is_free') || book.hasOwnProperty('pdf_url');
   const bookType = book._type || (isEbook ? 'ebook' : 'book');
+
+  const prefetchDetails = () => {
+    const queryKey = [bookType, book.id];
+    queryClient.prefetchQuery({
+      queryKey,
+      queryFn: () => bookType === 'ebook' 
+        ? catalogService.getEbookDetails(book.id) 
+        : catalogService.getBookDetails(book.id),
+      staleTime: 5 * 60 * 1000,
+    });
+  };
   
   const isAvailable = bookType === 'ebook' ? true : (book.available_copies > 0);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full group hover:-translate-y-2 transition-transform duration-300">
+    <div 
+      onMouseEnter={prefetchDetails}
+      className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full group hover:-translate-y-2 transition-transform duration-300"
+    >
       {/* Image Container - fixed 2:3 ratio via padding-bottom */}
       <div className="relative w-full overflow-hidden bg-slate-100" style={{ paddingBottom: '150%' }}>
         <img 

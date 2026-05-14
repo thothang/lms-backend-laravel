@@ -1,43 +1,60 @@
-import React from 'react';
+import { useEffect } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
-import { RefreshCcw, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { RefreshCw, X } from 'lucide-react';
 
 const PWAUpdatePrompt = () => {
   const {
+    offlineReady: [offlineReady, setOfflineReady],
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
-  } = useRegisterSW();
+  } = useRegisterSW({
+    onRegistered(r) {
+      console.log('SW Registered:', r);
+    },
+    onRegisterError(error) {
+      console.error('SW registration error:', error);
+    },
+  });
 
-  const close = () => {
-    setNeedRefresh(false);
-  };
+  useEffect(() => {
+    if (offlineReady) {
+      toast.success('Ứng dụng đã sẵn sàng hoạt động ngoại tuyến!', {
+        id: 'pwa-offline-ready',
+      });
+      setOfflineReady(false);
+    }
+  }, [offlineReady, setOfflineReady]);
 
-  if (!needRefresh) return null;
+  useEffect(() => {
+    if (needRefresh) {
+      toast('Có bản cập nhật mới!', {
+        id: 'pwa-update-prompt',
+        duration: Infinity,
+        description: 'Vui lòng cập nhật để sử dụng các tính năng mới nhất.',
+        action: {
+          label: (
+            <div className="flex items-center gap-2">
+              <RefreshCw size={14} className="animate-spin-slow" />
+              <span>Cập nhật ngay</span>
+            </div>
+          ),
+          onClick: () => updateServiceWorker(true),
+        },
+        cancel: {
+          label: (
+            <div className="flex items-center gap-1">
+              <X size={14} />
+              <span>Để sau</span>
+            </div>
+          ),
+          onClick: () => setNeedRefresh(false),
+        },
+      });
+    }
+  }, [needRefresh, setNeedRefresh, updateServiceWorker]);
 
-  return (
-    <div className="fixed bottom-6 right-6 z-[9999] animate-in slide-in-from-bottom-4">
-      <div className="bg-white border border-indigo-100 rounded-2xl shadow-2xl shadow-indigo-100/50 p-5 max-w-sm flex flex-col gap-3">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
-            <RefreshCcw size={20} />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-black text-slate-800 text-sm">Cập nhật mới!</h4>
-            <p className="text-xs text-slate-500 mt-0.5">Phiên bản mới đã sẵn sàng. Tải lại để cập nhật.</p>
-          </div>
-          <button onClick={close} className="text-slate-300 hover:text-slate-500 transition-colors">
-            <X size={16} />
-          </button>
-        </div>
-        <button
-          onClick={() => updateServiceWorker(true)}
-          className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all active:scale-95 shadow-lg shadow-indigo-100"
-        >
-          Cập nhật ngay
-        </button>
-      </div>
-    </div>
-  );
+  return null; // This component handles side effects via toasts
 };
 
 export default PWAUpdatePrompt;

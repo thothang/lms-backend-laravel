@@ -9,10 +9,10 @@ import {
   useLibrarianMessages,
   useLibrarianUsers,
   useContactMessages,
+  useContactMessageStats,
   useSendLibrarianMessage,
   useReplyContact,
 } from '../../hooks/queries';
-import { librarianService } from '../../services/librarianService';
 
 const LibrarianMessages = () => {
   const [activeTab, setActiveTab] = useState('sent');
@@ -32,33 +32,13 @@ const LibrarianMessages = () => {
   // Queries
   const { data: messagesData, isLoading: isLoadingMessages } = useLibrarianMessages();
   const { data: usersData, isLoading: isLoadingUsers } = useLibrarianUsers({ limit: 500 });
-  const { data: contactStats, refetch: refetchContactStats } = (() => {
-    const query = useContactMessages({
-      status: contactStatus === 'all' ? undefined : contactStatus,
-      search: contactSearch || undefined
-    });
-    return { data: null, refetch: query.refetch };
-  })();
+  const { data: contactMessagesData } = useContactMessages({
+    status: contactStatus === 'all' ? undefined : contactStatus,
+    search: contactSearch || undefined
+  });
+  const { data: statsData } = useContactMessageStats();
+  const pendingCount = statsData?.pending_count || 0;
   
-  // Separate query for contact messages stats
-  const [contactStatsData, setContactStatsData] = useState(null);
-  const [contactMessages, setContactMessages] = useState([]);
-
-  // Fetch contact messages and stats when tab is active
-  React.useEffect(() => {
-    if (activeTab === 'contact') {
-      const fetchContactData = async () => {
-        try {
-          const statsRes = await librarianService.getContactMessageStats();
-          setContactStatsData(statsRes);
-        } catch (err) {
-          handleApiError(err, 'Lỗi tải thống kê thư liên hệ');
-        }
-      };
-      fetchContactData();
-    }
-  }, [activeTab, contactStatus, contactSearch]);
-
   // Mutations
   const sendMessageMutation = useSendLibrarianMessage();
   const replyContactMutation = useReplyContact();
@@ -97,7 +77,6 @@ const LibrarianMessages = () => {
       });
       setReplyingTo(null);
       setReplyMessage('');
-      setContactStatus('answered'); // Refresh to show answered tab
     } catch (err) {
       handleApiError(err, 'Không thể trả lời thư');
     }
@@ -142,9 +121,9 @@ const LibrarianMessages = () => {
           }`}
         >
           <Inbox size={18} /> Thư liên hệ
-          {contactStatsData?.pending_count > 0 && (
+          {pendingCount > 0 && (
             <span className="bg-rose-500 text-white text-xs px-2 py-0.5 rounded-full">
-              {contactStatsData.pending_count}
+              {pendingCount}
             </span>
           )}
         </button>
@@ -206,13 +185,10 @@ const LibrarianMessages = () => {
       {/* Contact Messages Tab */}
       {activeTab === 'contact' && (
         <ContactMessagesTab
-          contactMessages={contactMessages}
-          setContactMessages={setContactMessages}
           contactStatus={contactStatus}
           setContactStatus={setContactStatus}
           contactSearch={contactSearch}
           setContactSearch={setContactSearch}
-          contactStats={contactStatsData}
           setReplyingTo={setReplyingTo}
         />
       )}
@@ -363,26 +339,17 @@ const LibrarianMessages = () => {
 };
 
 // Separate component for Contact Messages Tab to use hook properly
-const ContactMessagesTab = ({ 
-  contactMessages, 
-  setContactMessages, 
-  contactStatus, 
-  setContactStatus, 
-  contactSearch, 
-  setContactSearch, 
-  contactStats,
-  setReplyingTo 
+const ContactMessagesTab = ({
+  contactStatus,
+  setContactStatus,
+  contactSearch,
+  setContactSearch,
+  setReplyingTo
 }) => {
-  const { data, isLoading, refetch } = useContactMessages({
+  const { data, isLoading } = useContactMessages({
     status: contactStatus === 'all' ? undefined : contactStatus,
     search: contactSearch || undefined
   });
-
-  React.useEffect(() => {
-    if (data) {
-      setContactMessages(data?.data || data || []);
-    }
-  }, [data, setContactMessages]);
 
   const messages = data?.data || data || [];
 

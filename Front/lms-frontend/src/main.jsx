@@ -8,10 +8,9 @@ import App from './App.jsx'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 2 * 60 * 60 * 1000, // 2 hours
-      gcTime: 2 * 60 * 60 * 1000, // 2 hours (formerly cacheTime)
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
+      staleTime: 1 * 60 * 1000, // 1 minute
+      gcTime: 5 * 60 * 1000, // 5 minutes
+      refetchOnWindowFocus: true,
       retry: 1,
     },
   },

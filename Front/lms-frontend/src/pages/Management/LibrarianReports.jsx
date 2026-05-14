@@ -1,47 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   FileText, TrendingUp, AlertTriangle, BookMarked,
   RefreshCcw, Clock, ArrowUpRight, ArrowDownRight, Calendar,
   BarChart3, PieChart, Users, CheckCircle, Target, Star,
   Library, Filter
 } from 'lucide-react';
-import { librarianService } from '../../services/librarianService';
+import { 
+  useLibrarianBorrowStats, 
+  useLibrarianTopBooks, 
+  useLibrarianCategoryStats, 
+  useLibrarianReturnStats 
+} from '../../hooks/queries';
 import { handleApiError } from '../../utils/toastHelper';
 import { motion } from 'framer-motion';
 
 const LibrarianReports = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [overview, setOverview] = useState(null);
-  const [topBooks, setTopBooks] = useState([]);
-  const [categoryStats, setCategoryStats] = useState([]);
-  const [returnStats, setReturnStats] = useState(null);
-  const [borrowings, setBorrowings] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [period, setPeriod] = useState('month');
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const [ovRes, topRes, catRes, retRes] = await Promise.all([
-        librarianService.getBorrowStats().catch(() => ({})),
-        librarianService.getTopBooks({ period, limit: 10 }).catch(() => []),
-        librarianService.getCategoryStats({ period }).catch(() => []),
-        librarianService.getReturnStats({ period }).catch(() => null),
-      ]);
-      setOverview(ovRes.data || ovRes || {});
-      setTopBooks(topRes || []);
-      setCategoryStats(catRes || []);
-      setReturnStats(retRes);
-    } catch (err) {
-      handleApiError(err, 'Lỗi tải báo cáo');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // React Query hooks - handles loading, error, and caching automatically
+  const borrowStatsQuery = useLibrarianBorrowStats();
+  const topBooksQuery = useLibrarianTopBooks({ period, limit: 10 });
+  const categoryStatsQuery = useLibrarianCategoryStats({ period });
+  const returnStatsQuery = useLibrarianReturnStats({ period });
 
-  useEffect(() => {
-    fetchData();
-  }, [period]);
+  const overview = borrowStatsQuery.data || {};
+  const topBooks = topBooksQuery.data || [];
+  const categoryStats = categoryStatsQuery.data || [];
+  const returnStats = returnStatsQuery.data;
+
+  const isLoading = borrowStatsQuery.isLoading || topBooksQuery.isLoading || categoryStatsQuery.isLoading || returnStatsQuery.isLoading;
+
+  const fetchData = () => {
+    borrowStatsQuery.refetch();
+    topBooksQuery.refetch();
+    categoryStatsQuery.refetch();
+    returnStatsQuery.refetch();
+  };
 
   const statCards = [
     { 

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, Phone, MapPin, Calendar, ArrowRight, BookOpen } from 'lucide-react';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { authService } from '../../services/authService';
+import { useRegister } from '../../hooks/queries';
 import { tokenManager } from '../../services/tokenManager';
 import { handleApiError, showSuccess } from '../../utils/toastHelper';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ const AuthPage = () => {
     dob: ''
   });
   const [registerErrors, setRegisterErrors] = useState({});
-  const [isRegisterLoading, setIsRegisterLoading] = useState(false);
+  const { mutate: registerUser, isPending: isRegisterLoading } = useRegister();
   const [isRegisterSuccess, setIsRegisterSuccess] = useState(false);
 
   useEffect(() => {
@@ -136,49 +136,44 @@ const AuthPage = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleRegisterSubmit = async (e) => {
+  const handleRegisterSubmit = (e) => {
     e.preventDefault();
     if (!validateRegister()) return;
 
-    setIsRegisterLoading(true);
-
-    try {
-      const response = await authService.register(registerData);
-      
-      if (response.access_token) {
-        tokenManager.updateAuth(response.access_token, response.user, response.user?.balance);
-        showSuccess('Đăng ký thành công! Đang tự động đăng nhập...');
-        setIsRegisterSuccess(true);
-        
-        setTimeout(() => {
-          navigate('/');
-          window.location.reload(); 
-        }, 2000);
-      } else {
-        showSuccess(response.message || 'Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.');
-        setIsRegisterSuccess(true);
-        setTimeout(() => {
-          setIsLogin(true);
-          setIsRegisterSuccess(false);
-        }, 3000);
-      }
-      
-    } catch (err) {
-      handleApiError(err, 'Đã xảy ra lỗi trong quá trình đăng ký.');
-      
-      if (err.response && err.response.status === 422) {
-        const backendErrors = err.response.data.errors;
-        const newFormErrors = {};
-        for (const key in backendErrors) {
-          if (backendErrors.hasOwnProperty(key)) {
-            newFormErrors[key] = backendErrors[key][0];
-          }
+    registerUser(registerData, {
+      onSuccess: (response) => {
+        if (response.access_token) {
+          tokenManager.updateAuth(response.access_token, response.user, response.user?.balance);
+          showSuccess('Đăng ký thành công! Đang tự động đăng nhập...');
+          setIsRegisterSuccess(true);
+          
+          setTimeout(() => {
+            window.location.replace('/');
+          }, 2000);
+        } else {
+          showSuccess(response.message || 'Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.');
+          setIsRegisterSuccess(true);
+          setTimeout(() => {
+            setIsLogin(true);
+            setIsRegisterSuccess(false);
+          }, 3000);
         }
-        setRegisterErrors(newFormErrors);
+      },
+      onError: (err) => {
+        handleApiError(err, 'Đã xảy ra lỗi trong quá trình đăng ký.');
+        
+        if (err.response && err.response.status === 422) {
+          const backendErrors = err.response.data.errors;
+          const newFormErrors = {};
+          for (const key in backendErrors) {
+            if (backendErrors.hasOwnProperty(key)) {
+              newFormErrors[key] = backendErrors[key][0];
+            }
+          }
+          setRegisterErrors(newFormErrors);
+        }
       }
-    } finally {
-      setIsRegisterLoading(false);
-    }
+    });
   };
 
   const slideVariants = {
@@ -293,18 +288,20 @@ const AuthPage = () => {
                   <Input
                     name="email"
                     type="email"
+                    label="Email"
                     placeholder="you@example.com"
                     icon={Mail}
                     value={loginData.email}
                     onChange={handleLoginChange}
                     error={loginErrors.email}
-                    autoComplete="off"
+                    autoComplete="email"
                   />
 
                   <Input
                     name="password"
                     type="password"
-                    placeholder="••••••••"
+                    label="Mật khẩu"
+                    placeholder="Nhập mật khẩu"
                     icon={Lock}
                     value={loginData.password}
                     onChange={handleLoginChange}
@@ -356,29 +353,32 @@ const AuthPage = () => {
                     <Input
                       name="name"
                       type="text"
+                      label="Họ và tên"
                       placeholder="Nguyễn Văn A"
                       icon={User}
                       value={registerData.name}
                       onChange={handleRegisterChange}
                       error={registerErrors.name}
-                      autoComplete="off"
+                      autoComplete="name"
                     />
 
                     <Input
                       name="email"
                       type="email"
+                      label="Email"
                       placeholder="you@example.com"
                       icon={Mail}
                       value={registerData.email}
                       onChange={handleRegisterChange}
                       error={registerErrors.email}
-                      autoComplete="off"
+                      autoComplete="email"
                     />
 
                     <Input
                       name="password"
                       type="password"
-                      placeholder="••••••••"
+                      label="Mật khẩu"
+                      placeholder="Ít nhất 8 ký tự"
                       icon={Lock}
                       value={registerData.password}
                       onChange={handleRegisterChange}
@@ -389,7 +389,8 @@ const AuthPage = () => {
                     <Input
                       name="password_confirmation"
                       type="password"
-                      placeholder="••••••••"
+                      label="Xác nhận mật khẩu"
+                      placeholder="Nhập lại mật khẩu"
                       icon={Lock}
                       value={registerData.password_confirmation}
                       onChange={handleRegisterChange}
@@ -400,34 +401,37 @@ const AuthPage = () => {
                     <Input
                       name="phone"
                       type="tel"
+                      label="Số điện thoại"
                       placeholder="0912345678"
                       icon={Phone}
                       value={registerData.phone}
                       onChange={handleRegisterChange}
                       error={registerErrors.phone}
-                      autoComplete="off"
+                      autoComplete="tel"
                     />
 
                     <Input
                       name="dob"
                       type="date"
+                      label="Ngày sinh"
                       icon={Calendar}
                       value={registerData.dob}
                       onChange={handleRegisterChange}
                       error={registerErrors.dob}
-                      autoComplete="off"
+                      autoComplete="bday"
                     />
                   </div>
 
                   <Input
                     name="address"
                     type="text"
+                    label="Địa chỉ"
                     placeholder="Số nhà, Tên đường, Phường/Xã..."
                     icon={MapPin}
                     value={registerData.address}
                     onChange={handleRegisterChange}
                     error={registerErrors.address}
-                    autoComplete="off"
+                    autoComplete="street-address"
                   />
 
                   <Button

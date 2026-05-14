@@ -26,7 +26,7 @@ Phụ lục C: Tích Hợp Sepay
 
 Phụ lục D: WebSocket Events
 
-Phụ lục E: OCR và Watermark
+Phụ lục E: Watermark
 
 Phụ lục F: Background Jobs
 
@@ -369,7 +369,7 @@ Tra cứu sách (vật lý & ebook metadata)
 
 Xem chi tiết sách, đánh giá
 
-Đăng ký tài khoản (có OCR hoặc nhập tay)
+Đăng ký tài khoản (xác thực email)
 
 Quên mật khẩu
 
@@ -754,7 +754,7 @@ UserService – kiểm tra eligibility (debt/quota), cập nhật số dư an to
 
 EbookWatermarkService – thêm watermark vào file PDF
 
-OCRService – gọi API nhận dạng CCCD (có fallback nhập tay)
+// OCRService removed
 
 NotificationService – gửi email, web notification, realtime qua WebSocket
 
@@ -785,7 +785,7 @@ Mã lỗi HTTP:
 A.2 Endpoint đăng ký
 POST /register
 
-Request body (hỗ trợ OCR hoặc nhập tay):
+Request body:
 
 json
 Copy
@@ -800,7 +800,7 @@ Download
   "cccd_image": "base64_string_or_url",
   "cccd_number": "0123456789",
   "dob": "1990-01-01",
-  "use_ocr": false
+
 }
 
 Response (201):
@@ -1247,15 +1247,8 @@ Echo.connector('reverb', {
         headers: { Authorization: 'Bearer ' + token }
     }
 });
-12. PHỤ LỤC E: OCR VÀ WATERMARK
-E.1 OCR CCCD (có dự phòng nhập tay)
-Đề xuất: Sử dụng FPT.AI eKYC hoặc Google Cloud Vision
-
-Nếu OCR thất bại hoặc timeout, frontend có thể chuyển sang chế độ nhập tay
-
-Admin duyệt sẽ so sánh ảnh CCCD với thông tin user đã nhập
-
-E.2 Watermark ebook (hỗ trợ PDF)
+12. PHỤ LỤC E: WATERMARK
+E.1 Watermark ebook (hỗ trợ PDF)
 Yêu cầu author upload file PDF (EPUB có thể chuyển đổi sau)
 
 Sử dụng thư viện setasign/fpdi + setasign/fpdf

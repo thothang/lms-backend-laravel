@@ -190,10 +190,11 @@ class BorrowController extends Controller
             }
 
             // Notify user about successful renew
+            $newDueDate = Carbon::parse($result['borrow_record']['due_date']);
             Notification::create([
                 'user_id' => $user->id,
                 'title' => 'Gia hạn sách thành công',
-                'content' => "Bạn đã gia hạn thành công sách '{$borrowRecord->copy->book->title}'. Hạn trả mới: {$result['new_due_date']->format('d/m/Y')}.",
+                'content' => "Bạn đã gia hạn thành công sách '{$borrowRecord->copy->book->title}'. Hạn trả mới: {$newDueDate->format('d/m/Y')}.",
                 'type' => Notification::TYPE_WEB,
             ]);
 

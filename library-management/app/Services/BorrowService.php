@@ -296,7 +296,7 @@ class BorrowService
             // Update borrow record
             $borrowRecord->update([
                 'status' => 'returned',
-                'return_date' => Carbon::now(),
+                'actual_return_date' => Carbon::now(),
                 'actual_fee' => $feeData['borrow_fee'],
             ]);
 
@@ -354,6 +354,17 @@ class BorrowService
             $feeData = $borrowRecord->calculateFee();
             $borrowFee = $feeData['borrow_fee'];
 
+            // Clear associated UserDebt if exists
+            if ($user) {
+                $debts = UserDebt::where('borrow_record_id', $borrowRecord->id)
+                    ->where('status', '!=', UserDebt::STATUS_PAID)
+                    ->get();
+                
+                foreach ($debts as $debt) {
+                    $debt->recordPayment($debt->getRemainingAmount());
+                }
+            }
+
             // Add borrow fee to admin's earnings
             $admin = User::where('role', 'admin')->first();
             if ($admin && $borrowFee > 0) {
@@ -375,7 +386,7 @@ class BorrowService
             // Update borrow record
             $borrowRecord->update([
                 'status' => 'returned',
-                'return_date' => Carbon::now(),
+                'actual_return_date' => Carbon::now(),
                 'actual_fee' => $borrowFee,
             ]);
 
@@ -633,34 +644,85 @@ class BorrowService
 
             // Refund hoặc thu thêm
             if ($feeData['extra_amount_needed'] > 0) {
-                // Tạo pending payment cho user
+                $extraAmount = $feeData['extra_amount_needed'];
+                $deductedFromBalance = 0;
+                $addedToDebt = 0;
+
                 if ($user) {
-                    Transaction::create([
-                        'user_id' => $user->id,
-                        'amount' => $feeData['extra_amount_needed'],
-                        'type' => 'borrow_fee',
-                        'status' => 'pending',
-                        'metadata' => [
-                            'borrow_id' => $borrowRecord->id,
-                            'description' => 'Phí mượn vượt quá tiền cọc',
-                        ],
-                    ]);
+                    $availableBalance = (float)$user->balance;
+                    
+                    if ($availableBalance > 0) {
+                        $deductedFromBalance = min($availableBalance, $extraAmount);
+                        $user->subtractBalance($deductedFromBalance);
+                        
+                        // Create transaction for balance deduction
+                        Transaction::create([
+                            'user_id' => $user->id,
+                            'amount' => $deductedFromBalance,
+                            'type' => 'borrow_fee',
+                            'status' => 'success',
+                            'metadata' => [
+                                'borrow_id' => $borrowRecord->id,
+                                'description' => 'Trừ phí mượn từ số dư ví (trả sách muộn)',
+                            ],
+                        ]);
+                    }
+
+                    $addedToDebt = $extraAmount - $deductedFromBalance;
+                    
+                    if ($addedToDebt > 0) {
+                        // Ghi vào tổng nợ của user
+                        $user->addDebt($addedToDebt);
+                        
+                        // Tạo bản ghi chi tiết nợ
+                        UserDebt::create([
+                            'user_id' => $user->id,
+                            'borrow_record_id' => $borrowRecord->id,
+                            'amount' => $addedToDebt,
+                            'reason' => UserDebt::REASON_OVERDUE_PENALTY,
+                            'status' => UserDebt::STATUS_PENDING,
+                            'due_date' => Carbon::now()->addDays(config('library.debt_due_days', 7)),
+                        ]);
+
+                        // Tạo transaction pending để theo dõi
+                        Transaction::create([
+                            'user_id' => $user->id,
+                            'amount' => $addedToDebt,
+                            'type' => 'borrow_fee',
+                            'status' => 'pending',
+                            'metadata' => [
+                                'borrow_id' => $borrowRecord->id,
+                                'description' => 'Phí mượn còn thiếu chuyển thành nợ',
+                            ],
+                        ]);
+                    }
                 }
 
                 $borrowRecord->update([
-                    'status' => 'pending_return',
-                    'return_date' => Carbon::now(),
+                    'status' => $addedToDebt > 0 ? 'pending_return' : 'returned',
+                    'actual_return_date' => Carbon::now(),
+                    'actual_fee' => $feeData['borrow_fee'],
                 ]);
+
+                // Nếu đã trả hết (qua balance), cập nhật copy và queue
+                if ($addedToDebt <= 0) {
+                    $copy->update(['status' => 'available']);
+                    $book->updateAvailableCopies();
+                    $this->processReservationQueue($book);
+                }
 
                 return [
                     'success' => true,
-                    'message' => 'Đã xác nhận trả sách. Phí mượn vượt quá tiền cọc, vui lòng thanh toán phần còn lại.',
+                    'message' => $addedToDebt > 0 
+                        ? 'Đã xác nhận trả sách. Phí mượn còn thiếu đã được trừ vào ví hoặc ghi vào nợ.' 
+                        : 'Đã xác nhận trả sách và thanh toán phí mượn thành công.',
                     'borrow_record' => $borrowRecord,
                     'fee_details' => [
                         'total_days' => $feeData['total_days'],
                         'borrow_fee' => $feeData['borrow_fee'],
                         'deposit' => $feeData['deposit'],
-                        'extra_amount_needed' => $feeData['extra_amount_needed'],
+                        'deducted_from_balance' => $deductedFromBalance,
+                        'added_to_debt' => $addedToDebt,
                     ],
                 ];
             }
@@ -705,7 +767,7 @@ class BorrowService
             // Update borrow record
             $borrowRecord->update([
                 'status' => 'returned',
-                'return_date' => Carbon::now(),
+                'actual_return_date' => Carbon::now(),
                 'actual_fee' => $feeData['borrow_fee'],
             ]);
 
@@ -791,7 +853,7 @@ class BorrowService
             // Update borrow record status
             $borrowRecord->update([
                 'status' => 'cancelled',
-                'return_date' => Carbon::now(),
+                'actual_return_date' => Carbon::now(),
             ]);
 
             // Copy vẫn available (chưa lấy)
@@ -883,7 +945,7 @@ class BorrowService
             // 3. Cập nhật trạng thái BorrowRecord
             $borrowRecord->update([
                 'status' => 'cancelled',
-                'return_date' => Carbon::now(),
+                'actual_return_date' => Carbon::now(),
                 'actual_fee' => $oneDayFee,
             ]);
 

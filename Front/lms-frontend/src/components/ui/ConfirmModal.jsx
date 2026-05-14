@@ -43,20 +43,21 @@ const ConfirmModal = ({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
-      <div className="flex flex-col items-center text-center">
-        <div className="mb-4 p-4 rounded-full bg-slate-50 border border-slate-100">
+      <div className="flex flex-col items-center text-center" role="document">
+        <div className="mb-4 p-4 rounded-full bg-slate-50 border border-slate-100" aria-hidden="true">
           {getIcon()}
         </div>
         
-        <p className="text-slate-600 mb-8 leading-relaxed">
+        <p className="text-slate-600 mb-8 leading-relaxed" id="confirm-modal-message">
           {message}
         </p>
 
-        <div className="flex gap-3 w-full">
+        <div className="flex gap-3 w-full" role="group" aria-label="Hành động xác nhận">
           <button
             onClick={onClose}
             disabled={isLoading}
             className="flex-1 px-4 py-3 font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-2xl transition-all active:scale-95 disabled:opacity-50"
+            aria-label="Hủy bỏ"
           >
             {cancelText}
           </button>
@@ -64,6 +65,7 @@ const ConfirmModal = ({
             onClick={onConfirm}
             isLoading={isLoading}
             className={`flex-1 ${getConfirmButtonStyles()} rounded-2xl py-3 font-semibold text-white shadow-lg transition-all active:scale-95`}
+            aria-describedby="confirm-modal-message"
           >
             {confirmText}
           </Button>

@@ -45,6 +45,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-md' }) => {
             exit={{ opacity: 0 }}
             onClick={onClose}
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            aria-hidden="true"
           />
 
           {/* Modal Content */}
@@ -54,15 +55,19 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-md' }) => {
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={`relative bg-white sm:rounded-3xl rounded-t-3xl shadow-2xl w-full ${maxWidth} max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden z-10 border border-slate-100`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="modal-title"
           >
             {/* Header */}
             <div className="px-5 sm:px-6 py-4 flex items-center justify-between border-b border-slate-100 shrink-0">
               {/* Mobile drag indicator */}
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-10 h-1 bg-slate-200 rounded-full sm:hidden"></div>
-              <h3 className="text-lg font-bold text-slate-800 pr-8 truncate">{title}</h3>
+              <h3 id="modal-title" className="text-lg font-bold text-slate-800 pr-8 truncate">{title}</h3>
               <button
                 onClick={onClose}
                 className="p-2 hover:bg-slate-50 active:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600 shrink-0"
+                aria-label="Đóng cửa sổ"
               >
                 <X size={20} />
               </button>

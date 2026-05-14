@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { cn } from './Input';
 
 const Button = forwardRef(({ className, variant = 'default', size = 'default', isLoading, children, ...props }, ref) => {
-  
+
   const variants = {
     default: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm",
     outline: "border border-slate-200 bg-white hover:bg-slate-100 text-slate-900",
@@ -29,6 +29,7 @@ const Button = forwardRef(({ className, variant = 'default', size = 'default', i
       )}
       ref={ref}
       disabled={isLoading || props.disabled}
+      aria-label={props['aria-label'] || (typeof children === 'string' ? undefined : 'button')}
       {...props}
     >
       {isLoading ? (
@@ -37,6 +38,7 @@ const Button = forwardRef(({ className, variant = 'default', size = 'default', i
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
+          aria-hidden="true"
         >
           <circle
             className="opacity-25"

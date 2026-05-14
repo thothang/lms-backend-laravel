@@ -1,0 +1,19 @@
+User-agent: *
+Allow: /
+
+# Disallow admin and management routes
+Disallow: /admin/
+Disallow: /librarian/
+Disallow: /author/
+Disallow: /profile/
+Disallow: /ebook/*/read
+Disallow: /notifications
+
+# Allow search engines to crawl public pages
+Allow: /catalog
+Allow: /about
+Allow: /contact
+Allow: /borrowing-rules
+
+# Sitemap
+Sitemap: https://yourdomain.com/sitemap.xml

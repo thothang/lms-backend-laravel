@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit, Trash2, Search, Filter,
   BookOpen, Layers, PlusCircle, AlertTriangle,
@@ -20,19 +21,31 @@ import {
   useAddCopy,
   useDeleteCopy,
   useUpdateBookSettings,
+  useBookDetails,
 } from '../../hooks/queries';
 
 const ManageBooks = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [listFilter, setListFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const queryClient = useQueryClient();
 
   // React Query hooks
   const { data: categoriesData } = useCategories();
   const categories = categoriesData || [];
 
-  const { data: booksData, isLoading } = useBooks({ limit: 1000 });
+  const { data: booksData, isLoading, refetch } = useBooks({ 
+    page: currentPage, 
+    limit: itemsPerPage,
+    keyword: debouncedSearchTerm,
+    type: listFilter === 'all' ? undefined : listFilter
+  });
   const books = booksData?.data || booksData || [];
+  const totalItems = booksData?.total || 0;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   // Mutations
   const createBookMutation = useCreateBook();
@@ -63,8 +76,11 @@ const ManageBooks = () => {
 
   const [isCopiesModalOpen, setIsCopiesModalOpen] = useState(false);
   const [copiesBook, setCopiesBook] = useState(null);
-  const [copiesData, setCopiesData] = useState([]);
   const [newCopiesAmount, setNewCopiesAmount] = useState(1);
+  
+  // React Query for specific book details (copies)
+  const { data: currentBookDetails, isFetching: isFetchingCopies } = useBookDetails(copiesBook?.id);
+  const copiesData = currentBookDetails?.copies || [];
 
   const [selectedBook, setSelectedBook] = useState(null);
   const [showBookDetailModal, setShowBookDetailModal] = useState(false);
@@ -80,12 +96,12 @@ const ManageBooks = () => {
   const defaultSettings = { is_hot: false, is_featured: false, in_carousel: false, carousel_order: 1 };
   const [settingsData, setSettingsData] = useState(defaultSettings);
 
-  const filteredBooks = useMemo(() => {
-    return books.filter(book =>
-      book.title?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      book.author_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-    );
-  }, [books, debouncedSearchTerm]);
+  const filteredBooks = books; // Let Backend handle filtering
+
+  // Reset page on filter/search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, listFilter]);
 
   // --- CRUD BOOK ---
   const handleOpenForm = (book = null) => {
@@ -187,28 +203,26 @@ const ManageBooks = () => {
     }
   };
 
+  // --- PREFETCHING ---
+  const prefetchBook = (id) => {
+    queryClient.prefetchQuery({
+      queryKey: ['book', id],
+      queryFn: () => catalogService.getBookDetails(id),
+      staleTime: 5 * 60 * 1000,
+    });
+  };
+
   // --- COPIES MANAGEMENT ---
   const handleOpenCopies = async (book) => {
     setCopiesBook(book);
     setIsCopiesModalOpen(true);
     setNewCopiesAmount(1);
-    fetchCopies(book.id);
-  };
-
-  const fetchCopies = async (id) => {
-    try {
-      const res = await catalogService.getBookDetails(id);
-      setCopiesData(res.data?.copies || []);
-    } catch (err) {
-      handleApiError(err, 'Không thể tải bản sao');
-    }
   };
 
   const handleAddCopies = async () => {
     if (newCopiesAmount < 1) return;
     try {
       await addCopyMutation.mutateAsync({ bookId: copiesBook.id, quantity: newCopiesAmount });
-      fetchCopies(copiesBook.id);
       setNewCopiesAmount(1);
     } catch (err) {
       handleApiError(err);
@@ -219,7 +233,6 @@ const ManageBooks = () => {
     if (!window.confirm('Giảm 1 bản sao này? (Chỉ xóa được nếu đang có sẵn)')) return;
     try {
       await deleteCopyMutation.mutateAsync(copyId);
-      fetchCopies(copiesBook.id);
     } catch (err) {
       handleApiError(err);
     }
@@ -364,7 +377,11 @@ const ManageBooks = () => {
                   <td className="px-6 py-6 text-center">
                     <div className="inline-flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-1.5 font-black text-slate-700 text-sm">
                        {book.total_copies || 0}
-                       <button onClick={() => handleOpenCopies(book)} className="text-indigo-600 hover:scale-110 transition-transform p-1">
+                       <button 
+                         onClick={() => handleOpenCopies(book)} 
+                         onMouseEnter={() => prefetchBook(book.id)}
+                         className="text-indigo-600 hover:scale-110 transition-transform p-1"
+                       >
                          <PlusCircle size={16} />
                        </button>
                     </div>
@@ -383,8 +400,22 @@ const ManageBooks = () => {
                   </td>
                   <td className="px-6 py-6 transition-all">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                       <button onClick={() => handleOpenSettings(book)} className="p-2.5 bg-white border border-slate-100 rounded-xl text-amber-500 hover:bg-amber-50 shadow-sm transition-all" title="Cài đặt Hiển thị"><Star size={16}/></button>
-                       <button onClick={() => handleOpenForm(book)} className="p-2.5 bg-white border border-slate-100 rounded-xl text-indigo-600 hover:bg-indigo-50 shadow-sm transition-all" title="Sửa"><Edit size={16}/></button>
+                       <button 
+                         onClick={() => handleOpenSettings(book)} 
+                         onMouseEnter={() => prefetchBook(book.id)}
+                         className="p-2.5 bg-white border border-slate-100 rounded-xl text-amber-500 hover:bg-amber-50 shadow-sm transition-all" 
+                         title="Cài đặt Hiển thị"
+                       >
+                         <Star size={16}/>
+                       </button>
+                       <button 
+                         onClick={() => handleOpenForm(book)} 
+                         onMouseEnter={() => prefetchBook(book.id)}
+                         className="p-2.5 bg-white border border-slate-100 rounded-xl text-indigo-600 hover:bg-indigo-50 shadow-sm transition-all" 
+                         title="Sửa"
+                       >
+                         <Edit size={16}/>
+                       </button>
                        <button onClick={() => handleDeleteBook(book.id)} className="p-2.5 bg-white border border-slate-100 rounded-xl text-rose-500 hover:bg-rose-50 shadow-sm transition-all" title="Xóa"><Trash2 size={16}/></button>
                     </div>
                   </td>
@@ -401,6 +432,45 @@ const ManageBooks = () => {
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="p-6 border-t border-slate-50 flex justify-between items-center bg-slate-50/30">
+            <p className="text-xs text-slate-500 font-medium">
+              Hiển thị <span className="text-slate-800 font-bold">{Math.min(totalItems, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(totalItems, currentPage * itemsPerPage)}</span> trong tổng số <span className="text-indigo-600 font-black">{totalItems}</span> đầu sách
+            </p>
+            <div className="flex gap-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+              >
+                Trước
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                .map((p, idx, arr) => (
+                  <React.Fragment key={p}>
+                    {idx > 0 && arr[idx-1] !== p - 1 && <span className="px-2 text-slate-300">...</span>}
+                    <button
+                      onClick={() => setCurrentPage(p)}
+                      className={`w-8 h-8 rounded-xl text-xs font-black transition-all ${currentPage === p ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                    >
+                      {p}
+                    </button>
+                  </React.Fragment>
+                ))
+              }
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+              >
+                Sau
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* BẢNG SÁCH ĐANG ĐƯỢC MƯỢN (RIÊNG) */}
@@ -576,7 +646,11 @@ const ManageBooks = () => {
             <div>
                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Danh sách mã vạch hiện có</h4>
                <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                 {copiesData.length === 0 ? (
+                 {isFetchingCopies ? (
+                    <div className="flex justify-center py-4">
+                       <Loader2 className="animate-spin text-indigo-600" />
+                    </div>
+                 ) : copiesData.length === 0 ? (
                     <p className="text-slate-500 text-sm italic">Đang tải biểu mẫu hoặc chưa có bản sao...</p>
                  ) : copiesData.map(copy => (
                     <div key={copy.id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50">
@@ -677,7 +751,7 @@ const ManageBooks = () => {
           setSelectedBook(null);
         }}
         data={selectedBook}
-        type="ebook"
+        type="book"
       />
 
     </div>

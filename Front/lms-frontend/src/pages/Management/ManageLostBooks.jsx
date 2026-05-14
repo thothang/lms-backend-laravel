@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, BookX, Search, ShieldAlert, CheckCircle, User, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { handleApiError, showSuccess } from '../../utils/toastHelper';
+import { handleApiError } from '../../utils/toastHelper';
 import DetailModal from '../../components/ui/DetailModal';
-import { useMarkLost } from '../../hooks/queries';
+import { useMarkLost, useSearchBorrows, invalidateRelatedCaches } from '../../hooks/queries';
 
 const ManageLostBooks = () => {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
   const [selectedBorrow, setSelectedBorrow] = useState(null);
   const [selectedBorrowDetail, setSelectedBorrowDetail] = useState(null);
   const [showBorrowModal, setShowBorrowModal] = useState(false);
@@ -22,31 +22,7 @@ const ManageLostBooks = () => {
   const [result, setResult] = useState(null);
 
   const { mutate: markLost, isPending: isMarkingLost } = useMarkLost();
-
-  // Hàm tra cứu phiếu mượn theo user hoặc sách
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-    
-    setIsSearching(true);
-    setSearchResults([]);
-    setSelectedBorrow(null);
-    setResult(null);
-    
-    try {
-      const res = await fetch(`/api/librarian/borrows?keyword=${encodeURIComponent(searchQuery)}&status=active`);
-      const data = await res.json();
-      const resultData = data?.data || data || [];
-      setSearchResults(Array.isArray(resultData) ? resultData : []);
-      if(resultData.length === 0) {
-        handleApiError(new Error("Empty"), "Không tìm thấy phiếu mượn nào khớp với thông tin.");
-      }
-    } catch (error) {
-      handleApiError(error, 'Không thể tìm kiếm, Backend có thể chưa mở chuẩn API /librarian/borrows.');
-    } finally {
-      setIsSearching(false);
-    }
-  };
+  const { data: searchResults = [], isLoading: isSearching } = useSearchBorrows(searchQuery);
 
   const handleSelectBorrow = (borrow) => {
     setSelectedBorrow(borrow);
@@ -60,7 +36,7 @@ const ManageLostBooks = () => {
     const borrowId = selectedBorrow ? selectedBorrow.id : formData.borrow_id;
 
     if (!copyId || !borrowId) {
-       handleApiError(new Error("Vui lòng điện đủ Copy ID và Borrow ID."));
+       handleApiError(new Error("Vui lòng điền đủ Copy ID và Borrow ID."));
        return;
     }
 
@@ -74,16 +50,13 @@ const ManageLostBooks = () => {
       },
       {
         onSuccess: (res) => {
-          showSuccess('Ghi nhận sự cố thành công!');
-          
           setResult({
             amount: res?.data?.compensation_amount || res?.compensation_amount || 0,
             message: res?.data?.message || res?.message || 'Đã lập biên bản bồi thường.'
           });
           
-          if (selectedBorrow) {
-            setSearchResults(prev => prev.filter(b => b.id !== borrowId));
-          }
+          // Invalidate search to remove the processed borrow from results
+          invalidateRelatedCaches(queryClient, [['librarian', 'borrows', 'search']]);
           setSelectedBorrow(null);
           setFormData({ copy_id: '', borrow_id: '', damage_type: 'lost' });
         },
@@ -114,22 +87,20 @@ const ManageLostBooks = () => {
              1. Bảng Tra cứu
            </h2>
 
-           <form onSubmit={handleSearch} className="mb-6 relative flex gap-2">
+           <div className="mb-6 relative flex gap-2">
               <input
                  type="text"
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
-                 placeholder="Lọc tên KH, SĐT, Barcode..."
+                 placeholder="Tìm tên KH, SĐT, Barcode..."
                  className="flex-1 px-4 py-3 bg-slate-50 border-0 rounded-2xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-inner"
               />
-              <button 
-                 type="submit" 
-                 disabled={isSearching || !searchQuery.trim()}
-                 className="px-6 py-3 bg-indigo-600 text-white font-black rounded-2xl hover:bg-indigo-700 transition disabled:opacity-50"
-              >
-                 {isSearching ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Lọc'}
-              </button>
-           </form>
+              {isSearching && (
+                <div className="px-6 py-3 bg-indigo-600 text-white font-black rounded-2xl flex items-center">
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+           </div>
 
            <div className="flex-1 overflow-y-auto pr-2 space-y-3">
               {searchResults.length === 0 && !isSearching && (

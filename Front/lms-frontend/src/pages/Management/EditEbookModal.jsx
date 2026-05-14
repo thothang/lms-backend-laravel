@@ -3,9 +3,7 @@ import { Upload, X, Save, Image as ImageIcon, Loader2, FileText, AlertTriangle, 
 import Modal from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { authorService } from '../../services/authorService';
-import { librarianService } from '../../services/librarianService';
-import { useCategories } from '../../hooks/queries';
+import { useCategories, useUpdateAuthorEbook, useLibrarianUpdateEbook } from '../../hooks/queries';
 import { handleApiError, showSuccess } from '../../utils/toastHelper';
 
 /**
@@ -33,8 +31,12 @@ const EditEbookModal = ({ isOpen, onClose, ebook, onSuccess, isAdmin = false }) 
   
   const [previewCover, setPreviewCover] = useState(null);
   const [selectedFileName, setSelectedFileName] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const { data: categories = [] } = useCategories();
+  
+  const authorUpdateMutation = useUpdateAuthorEbook();
+  const librarianUpdateMutation = useLibrarianUpdateEbook();
+  
+  const isSubmitting = authorUpdateMutation.isPending || librarianUpdateMutation.isPending;
 
   // Populate form when ebook changes
   useEffect(() => {
@@ -88,7 +90,6 @@ const EditEbookModal = ({ isOpen, onClose, ebook, onSuccess, isAdmin = false }) 
     e.preventDefault();
     if (!ebook) return;
 
-    setIsLoading(true);
     const data = new FormData();
     
     // Title
@@ -136,17 +137,14 @@ const EditEbookModal = ({ isOpen, onClose, ebook, onSuccess, isAdmin = false }) 
 
     try {
       if (isAdmin) {
-        await librarianService.updateEbook(ebook.id, data);
+        await librarianUpdateMutation.mutateAsync({ id: ebook.id, formData: data });
       } else {
-        await authorService.updateEbook(ebook.id, data);
+        await authorUpdateMutation.mutateAsync({ id: ebook.id, formData: data });
       }
-      showSuccess('Cập nhật Ebook thành công!');
       if (onSuccess) onSuccess();
       onClose();
     } catch (err) {
-      handleApiError(err, 'Lỗi khi cập nhật Ebook.');
-    } finally {
-      setIsLoading(false);
+      // Error handled by mutation
     }
   };
 
@@ -305,11 +303,11 @@ const EditEbookModal = ({ isOpen, onClose, ebook, onSuccess, isAdmin = false }) 
 
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 sticky bottom-0 bg-white pb-1">
-          <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             Hủy
           </Button>
-          <Button type="submit" isLoading={isLoading} className="flex-1 sm:flex-none">
-            {isLoading ? <Loader2 className="animate-spin w-5 h-5" /> : <><Save size={18} className="mr-2" /> Lưu Thay Đổi</>}
+          <Button type="submit" isLoading={isSubmitting} className="flex-1 sm:flex-none">
+            {isSubmitting ? <Loader2 className="animate-spin w-5 h-5" /> : <><Save size={18} className="mr-2" /> Lưu Thay Đổi</>}
           </Button>
         </div>
       </form>

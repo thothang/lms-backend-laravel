@@ -78,9 +78,6 @@ return [
     'max_ebook_size' => env('MAX_EBOOK_SIZE', 52428800), // 50MB
     'allowed_ebook_formats' => ['pdf'],
 
-    // OCR settings
-    'ocr_provider' => env('OCR_PROVIDER', 'fpt'), // fpt, google
-    'fpt_api_key' => env('FPT_AI_API_KEY'),
-    'google_vision_key' => env('GOOGLE_VISION_API_KEY'),
 
 ];
+

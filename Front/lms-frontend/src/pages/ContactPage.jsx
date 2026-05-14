@@ -3,8 +3,7 @@ import {
   Mail, Send, CheckCircle, AlertCircle,
   MapPin, Phone, Clock, MessageSquare
 } from 'lucide-react';
-import { publicService } from '../services/publicService';
-import { handleApiError } from '../utils/toastHelper';
+import { useSubmitContact } from '../hooks/queries';
 import { motion } from 'framer-motion';
 import Navbar from '../components/home/Navbar';
 import Footer from '../components/home/Footer';
@@ -16,7 +15,7 @@ const ContactPage = () => {
     subject: '',
     message: '',
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { mutate: submitContact, isPending: isSubmitting } = useSubmitContact();
   const [submitted, setSubmitted] = useState(false);
 
   const handleChange = (e) => {
@@ -26,19 +25,14 @@ const ContactPage = () => {
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      await publicService.submitContact(formData);
-      setSubmitted(true);
-      setFormData({ name: '', email: '', subject: '', message: '' });
-    } catch (err) {
-      handleApiError(err, 'Gửi thư liên hệ thất bại');
-    } finally {
-      setIsSubmitting(false);
-    }
+    submitContact(formData, {
+      onSuccess: () => {
+        setSubmitted(true);
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      }
+    });
   };
 
   return (

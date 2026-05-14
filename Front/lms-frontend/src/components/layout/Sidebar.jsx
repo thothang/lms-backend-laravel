@@ -10,11 +10,72 @@ import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
 
 import ConfirmModal from '../ui/ConfirmModal';
+import { useQueryClient } from '@tanstack/react-query';
+import { adminService } from '../../services/adminService';
+import { librarianService } from '../../services/librarianService';
+import { authorService } from '../../services/authorService';
+import { catalogService } from '../../services/catalogService';
+
+const prefetchMap = {
+  // ADMIN ROUTES
+  '/admin/dashboard': () => adminService.getOverview(),
+  '/admin/users': () => adminService.getUsers({ limit: 100 }),
+  '/admin/permissions': () => adminService.getPermissions(),
+  '/admin/ebooks': () => adminService.getEbooks({ limit: 100 }),
+  '/admin/books': () => catalogService.getBooks({ limit: 10 }),
+  '/admin/withdrawals': () => adminService.getWithdrawals(),
+  '/admin/settings': () => adminService.getSystemSettings(),
+  
+  // LIBRARIAN ROUTES
+  '/librarian/dashboard': () => librarianService.getDashboardOverview(),
+  '/librarian/books': () => catalogService.getBooks({ limit: 10 }),
+  '/librarian/ebooks': () => librarianService.getEbooks(),
+  '/librarian/borrows': () => librarianService.getBorrows(),
+  '/librarian/offline': () => librarianService.getOfflineBorrows(),
+  '/librarian/reservations': () => librarianService.getReservations(),
+  '/librarian/lost-books': () => librarianService.getLostBooks(),
+  '/librarian/finance': () => librarianService.getFinanceOverview(),
+  '/librarian/users': () => librarianService.getUsers(),
+  '/librarian/reports': () => librarianService.getReports(),
+  '/librarian/messages': () => librarianService.getContactMessages(),
+  
+  // AUTHOR ROUTES
+  '/author/dashboard': () => authorService.getDashboard(),
+  '/author/my-ebooks': () => authorService.getMyEbooks(),
+  '/author/earnings': () => authorService.getEarnings(),
+};
+
+const queryKeyMap = {
+  '/admin/dashboard': ['admin', 'overview'],
+  '/admin/users': ['admin', 'users', { limit: 100 }],
+  '/admin/permissions': ['admin', 'permissions'],
+  '/admin/ebooks': ['admin', 'ebooks', { limit: 100 }],
+  '/admin/books': ['books', { limit: 10 }],
+  '/admin/withdrawals': ['admin', 'withdrawals'],
+  '/admin/settings': ['admin', 'settings'],
+  
+  '/librarian/dashboard': ['librarian', 'dashboard'],
+  '/librarian/books': ['books', { limit: 10 }],
+  '/librarian/ebooks': ['librarian', 'ebooks'],
+  '/librarian/borrows': ['librarian', 'borrows'],
+  '/librarian/offline': ['librarian', 'borrows', 'offline'],
+  '/librarian/reservations': ['librarian', 'reservations'],
+  '/librarian/lost-books': ['librarian', 'lost-books'],
+  '/librarian/finance': ['librarian', 'finance'],
+  '/librarian/users': ['librarian', 'users'],
+  '/librarian/reports': ['librarian', 'reports'],
+  '/librarian/messages': ['librarian', 'contact-messages'],
+  
+  '/author/dashboard': ['author', 'dashboard'],
+  '/author/my-ebooks': ['author', 'my-ebooks'],
+  '/author/earnings': ['author', 'earnings'],
+};
 
 const Sidebar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -24,6 +85,32 @@ const Sidebar = () => {
   useEffect(() => {
     setIsMobileOpen(false);
   }, [location.pathname]);
+
+  const prefetchPath = (path) => {
+    const queryFn = prefetchMap[path];
+    const queryKey = queryKeyMap[path];
+    
+    if (queryFn && queryKey) {
+      queryClient.prefetchQuery({
+        queryKey,
+        queryFn,
+        staleTime: 5 * 60 * 1000,
+      });
+    }
+  };
+
+  // Global Prefetching for all role-accessible pages on mount
+  useEffect(() => {
+    if (user && currentMenu.length > 0) {
+      // Small delay to prioritize initial page load
+      const timer = setTimeout(() => {
+        currentMenu.forEach(item => {
+          prefetchPath(item.path);
+        });
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [user?.role]);
 
   // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
@@ -155,6 +242,7 @@ const Sidebar = () => {
             to={item.path}
             title={(isCollapsed && !isMobile) ? item.name : ""}
             onClick={() => isMobile && setIsMobileOpen(false)}
+            onMouseEnter={() => prefetchPath(item.path)}
             className={({ isActive }) => `
               flex items-center gap-3 py-3 sm:py-3.5 rounded-2xl text-sm font-bold transition-all group overflow-hidden
               ${(isCollapsed && !isMobile) ? 'px-3 justify-center' : 'px-3 sm:px-4'}

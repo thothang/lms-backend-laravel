@@ -13,7 +13,7 @@ import {
   useUpdateEbookSettings
 } from '../../hooks/queries';
 import api from '../../services/api';
-import { handleApiError, showSuccess } from '../../utils/toastHelper';
+import { handleApiError } from '../../utils/toastHelper';
 import { motion } from 'framer-motion';
 import DetailModal from '../../components/ui/DetailModal';
 import AdminUploadEbook from './AdminUploadEbook';
@@ -87,7 +87,6 @@ const ManageAdminEbooks = () => {
         ebook_id: selectedEbook.id,
         ...displayConfig
       });
-      showSuccess('Đã cập nhật cài đặt hiển thị Ebook!');
       setShowSettingsModal(false);
     } catch (err) {
       handleApiError(err, 'Lỗi cập nhật hiển thị.');

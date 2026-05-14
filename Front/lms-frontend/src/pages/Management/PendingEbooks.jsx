@@ -4,7 +4,8 @@ import {
   Search, RefreshCw, AlertCircle,
   User, Calendar, DollarSign
 } from 'lucide-react';
-import { usePendingEbooks, useApproveEbook, useRejectEbook } from '../../hooks/queries';
+import { usePendingEbooks, useApproveEbook, useRejectEbook, invalidateRelatedCaches } from '../../hooks/queries';
+import { useQueryClient } from '@tanstack/react-query';
 import { handleApiError, showSuccess } from '../../utils/toastHelper';
 import { motion, AnimatePresence } from 'framer-motion';
 import DetailModal from '../../components/ui/DetailModal';
@@ -16,9 +17,10 @@ const PendingEbooks = ({ isEmbedded = false }) => {
   const [rejectReason, setRejectReason] = useState('');
   const [selectedEbook, setSelectedEbook] = useState(null);
   const [showEbookModal, setShowEbookModal] = useState(false);
+  const queryClient = useQueryClient();
 
   // React Query - use proper hooks
-  const { data: ebooks = [], isLoading, refetch } = usePendingEbooks();
+  const { data: ebooks = [], isLoading } = usePendingEbooks();
   const approveMutation = useApproveEbook();
   const rejectMutation = useRejectEbook();
 
@@ -32,7 +34,7 @@ const PendingEbooks = ({ isEmbedded = false }) => {
 
   // Manual refresh function
   const handleRefresh = () => {
-    refetch();
+    invalidateRelatedCaches(queryClient, [['admin', 'pending-ebooks']]);
   };
 
   const handleApprove = async (id) => {
@@ -40,7 +42,6 @@ const PendingEbooks = ({ isEmbedded = false }) => {
 
     try {
       await approveMutation.mutateAsync(id);
-      // Mutation will automatically invalidate queries and trigger refetch
     } catch (err) {
       handleApiError(err);
     }
@@ -54,10 +55,9 @@ const PendingEbooks = ({ isEmbedded = false }) => {
 
     try {
       await rejectMutation.mutateAsync({ id, reason: rejectReason });
-      showSuccess('Đã từ chối ebook.');
       setRejectingId(null);
       setRejectReason('');
-      // Mutation will automatically invalidate queries and trigger refetch
+      showSuccess('Đã từ chối ebook.');
     } catch (err) {
       handleApiError(err);
     }

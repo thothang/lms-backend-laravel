@@ -1,0 +1,14 @@
+Add pending pickup expiration and deposit flow improvements
+
+Backend:
+- Add ExpirePendingPickups command for automatic pickup expiration
+- Add pickup_deadline to BorrowRecord model and migration
+- Update BorrowService with automatic expiration logic
+- Update SepayService payment handling
+- Update docker-compose with queue worker
+
+Frontend:
+- Update Navbar with navigation changes
+- Improve DepositModal payment flow
+- Update queries hooks
+- Update PaymentSuccessPage

@@ -49,16 +49,22 @@ const SystemSettings = () => {
   const [settings, setSettings] = useState({});
   const [originalSettings, setOriginalSettings] = useState({});
 
-  const { isLoading, error } = useSettings({
-    onSuccess: (data) => {
+  const { data, isLoading, error } = useSettings();
+
+  useEffect(() => {
+    if (data) {
       const settingsData = data?.data || data || {};
       setSettings({ ...settingsData });
       setOriginalSettings({ ...settingsData });
-    },
-    onError: (err) => {
-      handleApiError(err, 'Không thể tải cấu hình hệ thống.');
-    },
-  });
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (error) {
+      handleApiError(error, 'Không thể tải cấu hình hệ thống.');
+    }
+  }, [error]);
+
 
   const { mutate: updateSettings, isPending: isSaving } = useUpdateSettings({
     onSuccess: () => {

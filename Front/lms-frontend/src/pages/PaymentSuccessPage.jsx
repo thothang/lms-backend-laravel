@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import paymentService from '../services/paymentService';
 import { tokenManager } from '../services/tokenManager';
+import { useQueryClient } from '@tanstack/react-query';
+import { useConfirmTopup } from '../hooks/queries';
 
 const PaymentSuccessPage = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [status, setStatus] = useState('processing'); // 'processing', 'success', 'error'
   const [amount, setAmount] = useState(0);
   
@@ -24,12 +26,14 @@ const PaymentSuccessPage = () => {
     };
   }, []);
 
+  const { mutate: confirmTopup } = useConfirmTopup();
+
   useEffect(() => {
     // Prevent duplicate calls from React StrictMode
     if (hasCalledRef.current) return;
     hasCalledRef.current = true;
 
-    const confirmAndRedirect = async () => {
+    const confirmAndRedirect = () => {
       // Try sessionStorage first, fall back to localStorage for mobile private browsing
       const pendingAmount = sessionStorage.getItem('pending_topup_amount')
         || localStorage.getItem('pending_topup_amount');
@@ -61,61 +65,56 @@ const PaymentSuccessPage = () => {
 
       setAmount(Number(pendingAmount));
 
-      try {
-        // Generate unique request ID for idempotency
-        // Fallback for older mobile browsers that don't support crypto.randomUUID
-        const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${Math.random().toString(36).substr(2, 9)}`;
+      // Generate unique request ID for idempotency
+      const requestId = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-        // Store request ID before API call to prevent duplicate
-        // Also store in localStorage as backup for private browsing mode
-        sessionStorage.setItem('processed_topup_request_id', requestId);
-        localStorage.setItem('processed_topup_request_id', requestId);
+      // Store request ID before API call
+      sessionStorage.setItem('processed_topup_request_id', requestId);
+      localStorage.setItem('processed_topup_request_id', requestId);
 
-        // Call API to confirm topup with request ID for idempotency
-        const response = await paymentService.confirmTopup(Number(pendingAmount), requestId);
+      confirmTopup({ amount: Number(pendingAmount), requestId }, {
+        onSuccess: (data) => {
+          // Remove from storage after success
+          sessionStorage.removeItem('pending_topup_amount');
+          sessionStorage.removeItem('processed_topup_request_id');
+          localStorage.removeItem('pending_topup_amount');
+          localStorage.removeItem('processed_topup_request_id');
+          setStatus('success');
 
-        // Remove from both session and local storage after successful confirmation
-        sessionStorage.removeItem('pending_topup_amount');
-        sessionStorage.removeItem('processed_topup_request_id');
-        localStorage.removeItem('pending_topup_amount');
-        localStorage.removeItem('processed_topup_request_id');
-        setStatus('success');
+          toast.success('Nạp tiền thành công!', {
+            description: `Đã cộng ${Number(pendingAmount).toLocaleString('vi-VN')} ₫ vào tài khoản.`,
+            duration: 6000,
+          });
 
-        // Show the success toast
-        toast.success('Nạp tiền thành công!', {
-          description: `Đã cộng ${Number(pendingAmount).toLocaleString('vi-VN')} ₫ vào tài khoản.`,
-          duration: 6000,
-        });
+          // Use the new_balance from API response if available
+          if (data?.new_balance !== undefined) {
+            tokenManager.setBalance(data.new_balance);
+          }
 
-        // Use the new_balance from API response if available
-        if (response.data?.new_balance !== undefined) {
-          tokenManager.setBalance(response.data.new_balance);
+          // Automatic redirect to profile
+          const redirectTimer = setTimeout(() => {
+            navigate('/profile');
+          }, 1500);
+          timersRef.current.push(redirectTimer);
+        },
+        onError: () => {
+          setStatus('error');
+          toast.error('Giao dịch thành công nhưng cập nhật số dư thất bại.', {
+            description: 'Vui lòng liên hệ bộ phận hỗ trợ.',
+          });
+          
+          const errorRedirectTimer = setTimeout(() => {
+            navigate('/profile');
+          }, 3000);
+          timersRef.current.push(errorRedirectTimer);
         }
-
-        // Automatic redirect to profile after 1.5 seconds
-        const redirectTimer = setTimeout(() => {
-          navigate('/profile');
-        }, 1500);
-        timersRef.current.push(redirectTimer);
-
-      } catch {
-        setStatus('error');
-        toast.error('Giao dịch thành công nhưng cập nhật số dư thất bại.', {
-          description: 'Vui lòng liên hệ bộ phận hỗ trợ.',
-        });
-        
-        // Still redirect after showing error
-        const errorRedirectTimer = setTimeout(() => {
-          navigate('/profile');
-        }, 3000);
-        timersRef.current.push(errorRedirectTimer);
-      }
+      });
     };
 
     confirmAndRedirect();
-  }, [navigate]);
+  }, [navigate, confirmTopup]);
 
   return (
     <motion.div

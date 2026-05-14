@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../../services/userService';
+import { useCancelReservation } from '../../hooks/queries';
 import { BookmarkPlus, CheckCircle, AlertCircle, Loader2, X, Calendar, DollarSign, FileText, Info, User } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { handleApiError, showSuccess } from '../../utils/toastHelper';
@@ -11,9 +12,10 @@ const ReservationList = () => {
   const queryClient = useQueryClient();
 
   const [cancelId, setCancelId] = useState(null);
-  const [isCancelLoading, setIsCancelLoading] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [detailReservation, setDetailReservation] = useState(null);
+  
+  const cancelMutation = useCancelReservation();
 
   // Use React Query for data fetching with caching
   const { data: reservations = [], isLoading } = useQuery({
@@ -32,16 +34,11 @@ const ReservationList = () => {
 
   const executeCancel = async () => {
     if (!cancelId) return;
-    setIsCancelLoading(true);
     try {
-      const res = await userService.cancelReservation(cancelId);
-      showSuccess(res.message || 'Đã hủy đặt trước thành công!');
+      await cancelMutation.mutateAsync(cancelId);
       setCancelId(null);
-      queryClient.invalidateQueries({ queryKey: ['user', 'reservations'] });
     } catch (err) {
-      handleApiError(err, 'Không thể hủy yêu cầu đặt trước.');
-    } finally {
-      setIsCancelLoading(false);
+      // Error handled by mutation toast
     }
   };
 
@@ -117,7 +114,7 @@ const ReservationList = () => {
         confirmText="Xác nhận hủy"
         cancelText="Để sau"
         type="warning"
-        isLoading={isCancelLoading}
+        isLoading={cancelMutation.isPending}
       />
 
       {showDetailModal && detailReservation && (
