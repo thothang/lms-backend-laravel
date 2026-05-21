@@ -26,21 +26,16 @@ class FinanceController extends Controller
     public function withdrawalRequests(Request $request): \Symfony\Component\HttpFoundation\Response
     {
         return $this->withApiExceptionHandling(function () use ($request) {
-            $cacheKey = 'admin.withdrawal_requests.' . md5(json_encode($request->all()));
+            $query = WithdrawalRequest::with('author:id,name,email');
+
+            if ($request->has('status')) {
+                $query->where('status', $request->status);
+            }
+
+            $limit = $request->input('limit', 20);
+            $requests = $query->orderBy('created_at', 'desc')->paginate($limit);
             
-            return response()->json(
-                Cache::remember($cacheKey, 300, function() use ($request) {
-                    $query = WithdrawalRequest::with('author:id,name,email');
-
-                    if ($request->has('status')) {
-                        $query->where('status', $request->status);
-                    }
-
-                    $limit = $request->input('limit', 20);
-                    $requests = $query->orderBy('created_at', 'desc')->paginate($limit);
-                    return $requests;
-                })
-            );
+            return response()->json($requests);
         }, 'Không thể lấy danh sách yêu cầu rút tiền');
     }
 
@@ -362,15 +357,6 @@ class FinanceController extends Controller
             Cache::forget('admin.revenue');
             Cache::forget('admin.transactions');
             Cache::forget("author.{$withdrawal->author_id}.earnings");
-            Cache::forget('admin.withdrawal_requests');
-            
-            if (Cache::getStore() instanceof \Illuminate\Cache\RedisStore) {
-                $redis = Cache::getStore()->connection();
-                $keys = $redis->keys('admin.withdrawal_requests.*');
-                foreach ($keys as $key) {
-                    Cache::forget($key);
-                }
-            }
 
             Notification::create([
                 'user_id' => $withdrawal->author_id,
