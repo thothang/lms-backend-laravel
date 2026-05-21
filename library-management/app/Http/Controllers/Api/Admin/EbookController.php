@@ -30,7 +30,7 @@ class EbookController extends Controller
     public function pendingEbooks(): \Symfony\Component\HttpFoundation\Response
     {
         return $this->withApiExceptionHandling(function () {
-            $cacheKey = 'admin:pending_ebooks:' . date('YmdH');
+            $cacheKey = 'admin.pending_ebooks';
             $cacheTtl = 300;
 
             $ebooks = Cache::remember($cacheKey, $cacheTtl, function() {

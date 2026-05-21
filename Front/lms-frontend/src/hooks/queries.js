@@ -233,7 +233,7 @@ export const useBooks = (params = {}) => {
 export const useEbooks = (params = {}) => {
   return useQuery({
     queryKey: ['ebooks', params],
-    queryFn: () => api.get('/librarian/ebooks/all', { params: { limit: 1000, ...params } }).then(res => res.data),
+    queryFn: () => api.get('/librarian/ebooks/all', { params: { limit: 1000, status: 'all', ...params } }).then(res => res.data),
     staleTime: 30 * 1000, // Cache for 30 seconds
     refetchOnWindowFocus: true,
     refetchInterval: 30 * 1000,

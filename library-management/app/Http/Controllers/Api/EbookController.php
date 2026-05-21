@@ -141,7 +141,7 @@ class EbookController extends Controller
                 if ($request->status === 'trashed') {
                     $query->onlyTrashed();
                 } elseif ($request->status === 'all') {
-                    // Show all ebooks including all statuses
+                    $query->withTrashed(); // Include all statuses and soft deleted
                 } else {
                     $query->where('status', $request->status);
                 }
