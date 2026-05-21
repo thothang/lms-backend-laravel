@@ -11,23 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('transactions', function (Blueprint $table) {
-            $table->index('type');
-            $table->index('status');
-        });
-
-        Schema::table('ebooks', function (Blueprint $table) {
-            $table->index('author_id');
-            $table->index('status');
-        });
-
-        Schema::table('withdrawal_requests', function (Blueprint $table) {
-            $table->index('status');
-        });
+        \DB::statement('CREATE INDEX IF NOT EXISTS transactions_type_index ON transactions(type)');
+        \DB::statement('CREATE INDEX IF NOT EXISTS transactions_status_index ON transactions(status)');
         
-        Schema::table('borrow_records', function (Blueprint $table) {
-            $table->index('status');
-        });
+        \DB::statement('CREATE INDEX IF NOT EXISTS ebooks_author_id_index ON ebooks(author_id)');
+        \DB::statement('CREATE INDEX IF NOT EXISTS ebooks_status_index ON ebooks(status)');
+        
+        \DB::statement('CREATE INDEX IF NOT EXISTS withdrawal_requests_status_index ON withdrawal_requests(status)');
+        
+        \DB::statement('CREATE INDEX IF NOT EXISTS borrow_records_status_index ON borrow_records(status)');
     }
 
     /**
@@ -35,8 +27,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('tables', function (Blueprint $table) {
-            //
-        });
+        \DB::statement('DROP INDEX IF EXISTS transactions_type_index');
+        \DB::statement('DROP INDEX IF EXISTS transactions_status_index');
+        
+        \DB::statement('DROP INDEX IF EXISTS ebooks_author_id_index');
+        \DB::statement('DROP INDEX IF EXISTS ebooks_status_index');
+        
+        \DB::statement('DROP INDEX IF EXISTS withdrawal_requests_status_index');
+        
+        \DB::statement('DROP INDEX IF EXISTS borrow_records_status_index');
     }
 };
