@@ -588,6 +588,45 @@ export const useBorrowBook = () => {
   const { fetchUser } = useAuth();
   return useMutation({
     mutationFn: ({ bookId, days }) => catalogService.borrowBook(bookId, days),
+    onMutate: async ({ bookId }) => {
+      await queryClient.cancelQueries({ queryKey: ['books'] });
+      
+      const queries = queryClient.getQueriesData({ queryKey: ['books'], exact: false });
+      const previousData = {};
+      
+      queries.forEach(([queryKey, oldData]) => {
+        previousData[JSON.stringify(queryKey)] = oldData;
+        queryClient.setQueryData(queryKey, (old) => {
+          if (!old) return old;
+          
+          // If it's a list
+          if (old.data && Array.isArray(old.data)) {
+            const newData = old.data.map(item => {
+              if (item.id === bookId) {
+                return {
+                  ...item,
+                  available_copies: Math.max(0, item.available_copies - 1)
+                };
+              }
+              return item;
+            });
+            return { ...old, data: newData };
+          }
+          
+          // If it's a single book detail
+          if (old.id === bookId) {
+            return {
+              ...old,
+              available_copies: Math.max(0, old.available_copies - 1)
+            };
+          }
+          
+          return old;
+        });
+      });
+      
+      return { previousData };
+    },
     onSuccess: () => {
       toast.success('Mượn sách thành công!');
       fetchUser().catch(() => {});
@@ -603,7 +642,12 @@ export const useBorrowBook = () => {
         ['user', 'notifications'],
       ]);
     },
-    onError: (err) => {
+    onError: (err, variables, context) => {
+      if (context?.previousData) {
+        Object.entries(context.previousData).forEach(([keyStr, oldData]) => {
+          try { queryClient.setQueryData(JSON.parse(keyStr), oldData); } catch(e) {}
+        });
+      }
       toast.error(err.response?.data?.error || err.response?.data?.message || 'Không thể mượn sách');
     },
   });
@@ -1261,6 +1305,40 @@ export const useProcessWithdrawal = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, action, notes }) => adminService.processWithdrawal(id, action, notes),
+    onMutate: async ({ id, action, notes }) => {
+      await queryClient.cancelQueries({ queryKey: ['admin', 'withdrawals'] });
+      
+      // We need to look through all queries that start with ['admin', 'withdrawals']
+      // since the query key might include params like { status: 'all' }
+      const queries = queryClient.getQueriesData({ queryKey: ['admin', 'withdrawals'], exact: false });
+      
+      const previousData = {};
+      
+      queries.forEach(([queryKey, oldData]) => {
+        previousData[JSON.stringify(queryKey)] = oldData;
+        
+        queryClient.setQueryData(queryKey, (old) => {
+          if (!old) return old;
+          
+          const dataArr = Array.isArray(old) ? old : (old.data || []);
+          const newData = dataArr.map(item => {
+            if (item.id === id) {
+              return {
+                ...item,
+                status: action === 'approve' ? 'completed' : 'rejected',
+                notes: notes || item.notes
+              };
+            }
+            return item;
+          });
+          
+          if (Array.isArray(old)) return newData;
+          return { ...old, data: newData };
+        });
+      });
+      
+      return { previousData };
+    },
     onSuccess: () => {
       toast.success('Xử lý yêu cầu rút tiền thành công!');
       invalidateRelatedCaches(queryClient, [
@@ -1271,7 +1349,14 @@ export const useProcessWithdrawal = () => {
         'author',
       ]);
     },
-    onError: (err) => {
+    onError: (err, variables, context) => {
+      if (context?.previousData) {
+        Object.entries(context.previousData).forEach(([keyStr, oldData]) => {
+          try {
+            queryClient.setQueryData(JSON.parse(keyStr), oldData);
+          } catch(e) {}
+        });
+      }
       toast.error(err.response?.data?.message || 'Không thể xử lý yêu cầu rút tiền');
     },
   });

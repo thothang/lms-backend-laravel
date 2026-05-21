@@ -1506,10 +1506,10 @@ class LibrarianController extends Controller
                 $search = $request->search;
                 $lowerSearch = mb_strtolower($search, 'UTF-8');
                 $query->where(function ($q) use ($lowerSearch) {
-                    $q->where(\DB::raw('LOWER(email)'), 'like', "%{$lowerSearch}%")
-                      ->orWhere(\DB::raw('LOWER(name)'), 'like', "%{$lowerSearch}%")
-                      ->orWhere(\DB::raw('LOWER(subject)'), 'like', "%{$lowerSearch}%")
-                      ->orWhere(\DB::raw('LOWER(message)'), 'like', "%{$lowerSearch}%");
+                    $q->where('email', 'ilike', "%{$lowerSearch}%")
+                      ->orWhere('name', 'ilike', "%{$lowerSearch}%")
+                      ->orWhere('subject', 'ilike', "%{$lowerSearch}%")
+                      ->orWhere('message', 'ilike', "%{$lowerSearch}%");
                 });
             }
 

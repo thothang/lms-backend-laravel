@@ -183,30 +183,17 @@ class FinanceController extends Controller
 
             $reservationIncome = \App\Models\Transaction::where('type', 'deposit')
                 ->where('status', 'success')
-                ->whereNotNull('metadata')
-                ->get()
-                ->filter(function ($t) {
-                    $metadata = is_array($t->metadata) ? $t->metadata : [];
-                    return isset($metadata['reservation_id']);
-                })
+                ->whereNotNull('metadata->reservation_id')
                 ->sum('amount');
 
             $depositIncome = \App\Models\Transaction::where('type', 'deposit_hold')
                 ->where('status', 'success')
-                ->get()
-                ->filter(function ($t) {
-                    $metadata = is_array($t->metadata) ? $t->metadata : [];
-                    return isset($metadata['borrow_id']);
-                })
+                ->whereNotNull('metadata->borrow_id')
                 ->sum('amount');
 
             $refundedDeposits = \App\Models\Transaction::where('type', 'deposit_refund')
                 ->where('status', 'success')
-                ->get()
-                ->filter(function ($t) {
-                    $metadata = is_array($t->metadata) ? $t->metadata : [];
-                    return isset($metadata['borrow_id']);
-                })
+                ->whereNotNull('metadata->borrow_id')
                 ->sum('amount');
 
             $actualConfiscated = $depositIncome - $refundedDeposits;

@@ -38,7 +38,7 @@ const CatalogPage = () => {
   const { data: categories = [], isLoading: loadingCategories } = useCategories();
 
   // Fetch Search Data using React Query
-  const { data: searchData, isLoading: isLoading } = useSearch({ ...filters, limit: 1000 });
+  const { data: searchData, isLoading: isLoading } = useSearch({ ...filters, limit: 100 });
 
   // Process search data
   const books = React.useMemo(() => {
