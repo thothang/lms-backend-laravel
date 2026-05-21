@@ -157,6 +157,11 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/display-items', [\App\Http\Controllers\Api\Management\DisplayManagerController::class, 'index']);
         Route::post('/display-items/toggle', [\App\Http\Controllers\Api\Management\DisplayManagerController::class, 'toggle']);
         Route::post('/display-items/reorder', [\App\Http\Controllers\Api\Management\DisplayManagerController::class, 'reorder']);
+
+        // Ebook Approval (Admin & Librarian)
+        Route::get('/ebooks/pending', [\App\Http\Controllers\Api\Admin\AdminEbookController::class, 'pendingEbooks']);
+        Route::post('/ebooks/{id}/approve', [\App\Http\Controllers\Api\Admin\AdminEbookController::class, 'approveEbook']);
+        Route::post('/ebooks/{id}/reject', [\App\Http\Controllers\Api\Admin\AdminEbookController::class, 'rejectEbook']);
     });
 
 
@@ -180,11 +185,6 @@ Route::middleware('auth:api')->group(function () {
 
         // Ebook Upload (revenue goes to admin)
         Route::post('/ebooks', [LibrarianController::class, 'uploadEbook']);
-
-        // Ebook Approval (Librarian with can_approve_ebook permission)
-        Route::get('/ebooks/pending', [AdminEbookController::class, 'pendingEbooks']);
-        Route::post('/ebooks/{id}/approve', [AdminEbookController::class, 'approveEbook']);
-        Route::post('/ebooks/{id}/reject', [AdminEbookController::class, 'rejectEbook']);
 
         // Ebook Management (Admin & Librarian)
         Route::get('/ebooks/all', [EbookController::class, 'getAll']);
@@ -252,10 +252,7 @@ Route::middleware('auth:api')->group(function () {
         Route::put('/permissions/librarian/{id}', [AdminUserController::class, 'updateLibrarianPermissions']);
 
         // Ebook Management
-        Route::get('/ebooks/pending', [AdminEbookController::class, 'pendingEbooks']);
         Route::post('/ebooks', [AdminEbookController::class, 'uploadEbook']); // Admin upload ebook
-        Route::post('/ebooks/{id}/approve', [AdminEbookController::class, 'approveEbook']);
-        Route::post('/ebooks/{id}/reject', [AdminEbookController::class, 'rejectEbook']);
 
         // Withdrawal Requests
         Route::get('/withdraw-requests', [AdminFinanceController::class, 'withdrawalRequests']);

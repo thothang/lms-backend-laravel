@@ -30,17 +30,17 @@ export const adminService = {
 
   // Ebook Approvals
   getPendingEbooks: async () => {
-    const response = await api.get('/admin/ebooks/pending');
+    const response = await api.get('/management/ebooks/pending');
     return response.data;
   },
 
   approveEbook: async (id) => {
-    const response = await api.post(`/admin/ebooks/${id}/approve`);
+    const response = await api.post(`/management/ebooks/${id}/approve`);
     return response.data;
   },
 
   rejectEbook: async (id, reason) => {
-    const response = await api.post(`/admin/ebooks/${id}/reject`, { reason });
+    const response = await api.post(`/management/ebooks/${id}/reject`, { reason });
     return response.data;
   },
 
