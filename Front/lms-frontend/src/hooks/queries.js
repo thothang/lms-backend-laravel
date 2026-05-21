@@ -1134,6 +1134,33 @@ export const useConfirmPickup = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id) => api.post(`/librarian/borrows/${id}/confirm-pickup`),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['librarian', 'borrows'] });
+      
+      const queries = queryClient.getQueriesData({ queryKey: ['librarian', 'borrows'], exact: false });
+      const previousData = {};
+      
+      queries.forEach(([queryKey, oldData]) => {
+        previousData[JSON.stringify(queryKey)] = oldData;
+        
+        queryClient.setQueryData(queryKey, (old) => {
+          if (!old) return old;
+          const dataArr = Array.isArray(old) ? old : (old.data || []);
+          
+          const newData = dataArr.map(item => {
+            if (item.id === id) {
+              return { ...item, status: 'borrowed' };
+            }
+            return item;
+          });
+          
+          if (Array.isArray(old)) return newData;
+          return { ...old, data: newData };
+        });
+      });
+      
+      return { previousData };
+    },
     onSuccess: () => {
       toast.success('Xác nhận nhận sách thành công!');
       invalidateRelatedCaches(queryClient, [
@@ -1150,8 +1177,14 @@ export const useConfirmPickup = () => {
         ['user', 'reservations'],
       ]);
     },
-    onError: (err) => {
+    onError: (err, variables, context) => {
+      if (context?.previousData) {
+        Object.entries(context.previousData).forEach(([keyStr, oldData]) => {
+          try { queryClient.setQueryData(JSON.parse(keyStr), oldData); } catch(e) {}
+        });
+      }
       console.error('Confirm pickup error:', err.response?.data);
+      toast.error(err.response?.data?.error || err.response?.data?.message || 'Không thể xác nhận');
     },
   });
 };

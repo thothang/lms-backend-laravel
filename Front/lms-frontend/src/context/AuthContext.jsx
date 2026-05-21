@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }) => {
           // Prefetch admin dashboard metrics
           queryClient.prefetchQuery({
             queryKey: ['admin', 'pending-ebooks'],
-            queryFn: () => api.get('/admin/ebooks/pending').then(res => res.data),
+            queryFn: () => api.get('/management/ebooks/pending').then(res => res.data),
             staleTime: 10 * 1000,
           }).catch(() => {});
 

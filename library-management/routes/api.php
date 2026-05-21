@@ -159,9 +159,9 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/display-items/reorder', [\App\Http\Controllers\Api\Management\DisplayManagerController::class, 'reorder']);
 
         // Ebook Approval (Admin & Librarian)
-        Route::get('/ebooks/pending', [\App\Http\Controllers\Api\Admin\AdminEbookController::class, 'pendingEbooks']);
-        Route::post('/ebooks/{id}/approve', [\App\Http\Controllers\Api\Admin\AdminEbookController::class, 'approveEbook']);
-        Route::post('/ebooks/{id}/reject', [\App\Http\Controllers\Api\Admin\AdminEbookController::class, 'rejectEbook']);
+        Route::get('/ebooks/pending', [\App\Http\Controllers\Api\Admin\EbookController::class, 'pendingEbooks']);
+        Route::post('/ebooks/{id}/approve', [\App\Http\Controllers\Api\Admin\EbookController::class, 'approveEbook']);
+        Route::post('/ebooks/{id}/reject', [\App\Http\Controllers\Api\Admin\EbookController::class, 'rejectEbook']);
     });
 
 
