@@ -58,10 +58,12 @@ const BookDisplayManager = ({ books = [], ebooks = [] }) => {
 
   // Search Results available to add
   const availableItems = useMemo(() => {
-    if (!debouncedSearch || !searchResultsData?.data) return [];
+    if (!debouncedSearch || !searchResultsData) return [];
     
-    // searchResultsData.data can be mixed or we combine books/ebooks if the search endpoint returns them separated
-    const results = Array.isArray(searchResultsData.data) ? searchResultsData.data : [];
+    // searchResultsData contains { books: { data: [] }, ebooks: { data: [] } }
+    const booksResults = searchResultsData.books?.data || [];
+    const ebooksResults = searchResultsData.ebooks?.data || [];
+    const results = [...booksResults, ...ebooksResults];
     
     return results.filter(i => {
       const type = i.is_ebook ? 'ebook' : 'book';

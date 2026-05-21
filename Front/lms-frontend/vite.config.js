@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA({
+    /* VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       workbox: {
@@ -37,7 +37,7 @@ export default defineConfig({
           }
         ]
       }
-    })
+    }) */
   ],
   build: {
     rollupOptions: {
