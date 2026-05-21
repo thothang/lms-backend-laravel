@@ -7,7 +7,11 @@ use App\Http\Controllers\Api\EbookController;
 use App\Http\Controllers\Api\BorrowController;
 use App\Http\Controllers\Api\AuthorEbookController;
 use App\Http\Controllers\Api\LibrarianController;
-use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Api\Admin\EbookController as AdminEbookController;
+use App\Http\Controllers\Api\Admin\FinanceController as AdminFinanceController;
+use App\Http\Controllers\Api\Admin\SystemController as AdminSystemController;
+use App\Http\Controllers\Api\Admin\SettingController as AdminSettingController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\MessageController;
@@ -111,7 +115,9 @@ Route::middleware('auth:api')->group(function () {
         // Payment
         Route::post('/deposit', [PaymentController::class, 'createDepositPayment']);
         Route::post('/topup', [PaymentController::class, 'createTopupPayment']);
-        Route::post('/topup/confirm', [PaymentController::class, 'confirmTopup']); // Direct confirm for sandbox testing
+        if (app()->environment('local', 'testing')) {
+            Route::post('/topup/confirm', [PaymentController::class, 'confirmTopup']); // Direct confirm for sandbox testing
+        }
         Route::post('/fine', [PaymentController::class, 'createFinePayment']);
         Route::get('/payments/history', [PaymentController::class, 'getHistory']);
 
@@ -145,6 +151,16 @@ Route::middleware('auth:api')->group(function () {
 
 
     // ============================================
+    // MANAGEMENT ROUTES (Admin & Librarian)
+    // ============================================
+    Route::middleware('role:librarian,admin')->prefix('management')->group(function () {
+        Route::get('/display-items', [\App\Http\Controllers\Api\Management\DisplayManagerController::class, 'index']);
+        Route::post('/display-items/toggle', [\App\Http\Controllers\Api\Management\DisplayManagerController::class, 'toggle']);
+        Route::post('/display-items/reorder', [\App\Http\Controllers\Api\Management\DisplayManagerController::class, 'reorder']);
+    });
+
+
+    // ============================================
     // LIBRARIAN ROUTES
     // ============================================
     Route::middleware('role:librarian,admin')->prefix('librarian')->group(function () {
@@ -166,9 +182,9 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/ebooks', [LibrarianController::class, 'uploadEbook']);
 
         // Ebook Approval (Librarian with can_approve_ebook permission)
-        Route::get('/ebooks/pending', [AdminController::class, 'pendingEbooks']);
-        Route::post('/ebooks/{id}/approve', [AdminController::class, 'approveEbook']);
-        Route::post('/ebooks/{id}/reject', [AdminController::class, 'rejectEbook']);
+        Route::get('/ebooks/pending', [AdminEbookController::class, 'pendingEbooks']);
+        Route::post('/ebooks/{id}/approve', [AdminEbookController::class, 'approveEbook']);
+        Route::post('/ebooks/{id}/reject', [AdminEbookController::class, 'rejectEbook']);
 
         // Ebook Management (Admin & Librarian)
         Route::get('/ebooks/all', [EbookController::class, 'getAll']);
@@ -227,36 +243,36 @@ Route::middleware('auth:api')->group(function () {
     // ============================================
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         // User Management
-        Route::get('/users', [AdminController::class, 'users']);
-        Route::put('/users/{id}/status', [AdminController::class, 'updateUserStatus']);
-        Route::post('/users/{id}/make-author', [AdminController::class, 'makeAuthor']);
+        Route::get('/users', [AdminUserController::class, 'users']);
+        Route::put('/users/{id}/status', [AdminUserController::class, 'updateUserStatus']);
+        Route::post('/users/{id}/make-author', [AdminUserController::class, 'makeAuthor']);
 
         // Librarian Permissions
-        Route::get('/permissions/librarians', [AdminController::class, 'getLibrarianPermissions']);
-        Route::put('/permissions/librarian/{id}', [AdminController::class, 'updateLibrarianPermissions']);
+        Route::get('/permissions/librarians', [AdminUserController::class, 'getLibrarianPermissions']);
+        Route::put('/permissions/librarian/{id}', [AdminUserController::class, 'updateLibrarianPermissions']);
 
         // Ebook Management
-        Route::get('/ebooks/pending', [AdminController::class, 'pendingEbooks']);
-        Route::post('/ebooks', [AdminController::class, 'uploadEbook']); // Admin upload ebook
-        Route::post('/ebooks/{id}/approve', [AdminController::class, 'approveEbook']);
-        Route::post('/ebooks/{id}/reject', [AdminController::class, 'rejectEbook']);
+        Route::get('/ebooks/pending', [AdminEbookController::class, 'pendingEbooks']);
+        Route::post('/ebooks', [AdminEbookController::class, 'uploadEbook']); // Admin upload ebook
+        Route::post('/ebooks/{id}/approve', [AdminEbookController::class, 'approveEbook']);
+        Route::post('/ebooks/{id}/reject', [AdminEbookController::class, 'rejectEbook']);
 
         // Withdrawal Requests
-        Route::get('/withdraw-requests', [AdminController::class, 'withdrawalRequests']);
-        Route::post('/withdraw-requests/{id}/process', [AdminController::class, 'processWithdrawal']);
+        Route::get('/withdraw-requests', [AdminFinanceController::class, 'withdrawalRequests']);
+        Route::post('/withdraw-requests/{id}/process', [AdminFinanceController::class, 'processWithdrawal']);
 
         // Admin Revenue
-        Route::get('/revenue', [AdminController::class, 'revenue']);
-        Route::get('/deposit-summary', [AdminController::class, 'depositSummary']);
-        Route::get('/borrow-stats', [AdminController::class, 'borrowStats']);
+        Route::get('/revenue', [AdminFinanceController::class, 'revenue']);
+        Route::get('/deposit-summary', [AdminFinanceController::class, 'depositSummary']);
+        Route::get('/borrow-stats', [AdminFinanceController::class, 'borrowStats']);
 
         // Ebook Earnings
-        Route::get('/ebook-earnings', [AdminController::class, 'ebookEarnings']);
-        Route::get('/author-earnings', [AdminController::class, 'authorEarningsSummary']);
+        Route::get('/ebook-earnings', [AdminFinanceController::class, 'ebookEarnings']);
+        Route::get('/author-earnings', [AdminFinanceController::class, 'authorEarningsSummary']);
 
         // Settings
-        Route::get('/settings', [AdminController::class, 'settings']);
-        Route::put('/settings', [AdminController::class, 'updateSettings']);
+        Route::get('/settings', [AdminSettingController::class, 'settings']);
+        Route::put('/settings', [AdminSettingController::class, 'updateSettings']);
 
         // Reports
         Route::prefix('reports')->group(function () {
@@ -266,10 +282,10 @@ Route::middleware('auth:api')->group(function () {
         });
 
         // Audit Logs
-        Route::get('/audit-logs', [AdminController::class, 'auditLogs']);
+        Route::get('/audit-logs', [AdminSystemController::class, 'auditLogs']);
 
         // Transactions
-        Route::get('/transactions', [AdminController::class, 'transactions']);
+        Route::get('/transactions', [AdminSystemController::class, 'transactions']);
     });
 });
 

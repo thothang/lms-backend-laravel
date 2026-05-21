@@ -49,6 +49,6 @@ class SendOverdueReminders extends Command
 
         $this->info("Sent {$overdueDebts->count()} overdue reminders");
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

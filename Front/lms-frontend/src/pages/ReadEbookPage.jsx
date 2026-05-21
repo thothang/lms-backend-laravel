@@ -23,6 +23,7 @@ const ReadEbookPage = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loadedPages, setLoadedPages] = useState(new Set());
   const [pdfData, setPdfData] = useState(null);
+  const [containerWidth, setContainerWidth] = useState(null);
 
   // React Query hooks
   const { data: ebookInfo, isLoading: isDetailsLoading } = useEbookDetails(id);
@@ -42,14 +43,26 @@ const ReadEbookPage = () => {
   const isLoading = isDetailsLoading || isAccessLoading || isPdfLoading;
   const error = pdfError ? (pdfError.response?.data?.error || pdfError.message) : (accessInfo?.can_read === false && !hasPreview ? (accessInfo.reason || 'Bạn không có quyền đọc Ebook này.') : '');
 
+  // Dynamic container width observer for responsive mobile view
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   useEffect(() => {
     if (rawPdfData) {
       const blob = new Blob([rawPdfData], { type: 'application/pdf' });
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPdfData(reader.result);
+      const url = URL.createObjectURL(blob);
+      setPdfData(url);
+      return () => {
+        URL.revokeObjectURL(url);
       };
-      reader.readAsDataURL(blob);
     }
   }, [rawPdfData]);
 
@@ -200,48 +213,50 @@ const ReadEbookPage = () => {
           <div className="flex-1 flex flex-col overflow-hidden relative">
             {/* Scrollable PDF Content */}
             <div className="flex-1 overflow-y-auto scroll-smooth">
-              <div className="flex flex-col items-center gap-2 sm:gap-4 py-4 sm:py-6 px-2 sm:px-4">
-                {Array.from(new Array(numPages), (el, index) => (
-                  <div
-                    key={`page-${index + 1}`}
-                    ref={(el) => (pageRefs.current[index + 1] = el)}
-                    data-page={index + 1}
-                    className="page-container"
-                  >
-                    <Document
-                      file={pdfData}
-                      onLoadSuccess={onDocumentLoadSuccess}
-                      loading={
-                        <div className="flex items-center justify-center" style={{ 
-                          minHeight: '600px', 
-                          width: scale < 1 ? `${600 / scale}px` : `${600 * scale}px`,
-                          height: scale < 1 ? `${800 / scale}px` : `${800 * scale}px`
-                        }}>
-                          <Loader2 className="animate-spin text-indigo-400" size={32} />
-                        </div>
-                      }
-                    >
-                      <Page 
-                        pageNumber={index + 1}
-                        scale={scale}
-                        className="shadow-2xl bg-white"
-                        renderTextLayer={true}
-                        renderAnnotationLayer={true}
-                        onLoadSuccess={() => onPageLoad(index + 1)}
-                        loading={
-                          <div className="flex items-center justify-center bg-slate-700 rounded" style={{ 
-                            minHeight: '600px', 
-                            width: scale < 1 ? `${600 / scale}px` : `${600 * scale}px`,
-                            height: scale < 1 ? `${800 / scale}px` : `${800 * scale}px`
-                          }}>
-                            <Loader2 className="animate-spin text-indigo-400" size={32} />
-                          </div>
-                        }
-                      />
-                    </Document>
+              <Document
+                file={pdfData}
+                onLoadSuccess={onDocumentLoadSuccess}
+                loading={
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-300 py-20">
+                    <Loader2 className="animate-spin mb-4 text-indigo-400" size={40} />
+                    <p className="font-medium animate-pulse text-sm tracking-wide">Đang phân tích tài liệu...</p>
                   </div>
-                ))}
-              </div>
+                }
+              >
+                <div className="flex flex-col items-center gap-2 sm:gap-4 py-4 sm:py-6 px-2 sm:px-4">
+                  {Array.from(new Array(numPages), (el, index) => {
+                    const pageNum = index + 1;
+                    const calculatedWidth = containerWidth ? Math.max(280, Math.min(containerWidth - 32, 800)) : 600;
+                    return (
+                      <div
+                        key={`page-${pageNum}`}
+                        ref={(el) => (pageRefs.current[pageNum] = el)}
+                        data-page={pageNum}
+                        className="page-container"
+                      >
+                        <Page 
+                          pageNumber={pageNum}
+                          scale={scale}
+                          width={calculatedWidth}
+                          className="shadow-2xl bg-white"
+                          renderTextLayer={true}
+                          renderAnnotationLayer={true}
+                          onLoadSuccess={() => onPageLoad(pageNum)}
+                          loading={
+                            <div className="flex items-center justify-center bg-slate-700 rounded" style={{ 
+                              minHeight: '400px', 
+                              width: calculatedWidth * scale,
+                              height: calculatedWidth * 1.4 * scale
+                            }}>
+                              <Loader2 className="animate-spin text-indigo-400" size={32} />
+                            </div>
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </Document>
             </div>
 
             {/* Bottom Navigation Bar - Scroll based */}

@@ -9,8 +9,7 @@ import {
   useEbooks,
   useDeleteEbook,
   useRestoreEbook,
-  useForceDeleteEbook,
-  useUpdateEbookSettings
+  useForceDeleteEbook
 } from '../../hooks/queries';
 import api from '../../services/api';
 import { handleApiError } from '../../utils/toastHelper';
@@ -37,15 +36,6 @@ const ManageAdminEbooks = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEbook, setEditingEbook] = useState(null);
 
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [selectedEbook, setSelectedEbook] = useState(null);
-  const [displayConfig, setDisplayConfig] = useState({
-    is_hot: false,
-    is_featured: false,
-    in_carousel: false,
-    carousel_order: 0
-  });
-
   const [selectedEbookDetail, setSelectedEbookDetail] = useState(null);
   const [showEbookDetailModal, setShowEbookDetailModal] = useState(false);
 
@@ -54,7 +44,6 @@ const ManageAdminEbooks = () => {
   const deleteMutation = useDeleteEbook();
   const restoreMutation = useRestoreEbook();
   const forceDeleteMutation = useForceDeleteEbook();
-  const settingsMutation = useUpdateEbookSettings();
 
   // Flatten ebooks data
   const ebooks = Array.isArray(ebooksData) ? ebooksData : (ebooksData?.data || []);
@@ -67,31 +56,7 @@ const ManageAdminEbooks = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const openSettings = (ebook) => {
-    setSelectedEbook(ebook);
-    const maxOrder = ebooks
-      .filter(e => e.in_carousel)
-      .reduce((max, e) => Math.max(max, e.carousel_order || 0), 0);
-    setDisplayConfig({
-      is_hot: ebook.is_hot || false,
-      is_featured: ebook.is_featured || false,
-      in_carousel: ebook.in_carousel || false,
-      carousel_order: ebook.in_carousel ? (ebook.carousel_order || 1) : (maxOrder + 1)
-    });
-    setShowSettingsModal(true);
-  };
 
-  const saveSettings = async () => {
-    try {
-      await settingsMutation.mutateAsync({
-        ebook_id: selectedEbook.id,
-        ...displayConfig
-      });
-      setShowSettingsModal(false);
-    } catch (err) {
-      handleApiError(err, 'Lỗi cập nhật hiển thị.');
-    }
-  };
 
   const handleDeleteEbook = async (id) => {
     if (!window.confirm('Bạn có chắc muốn chuyển Ebook này vào thùng rác?')) return;
@@ -339,9 +304,7 @@ const ManageAdminEbooks = () => {
                             </>
                          ) : (
                             <>
-                               <button onClick={() => openSettings(book)} className="p-2.5 bg-white border border-slate-100 rounded-xl text-slate-600 hover:text-amber-500 hover:border-amber-100 shadow-sm transition-all" title="Cài đặt hiển thị">
-                                  <Settings size={16}/>
-                               </button>
+
                                <button onClick={() => { setEditingEbook(book); setIsEditModalOpen(true); }} className="p-2.5 bg-white border border-slate-100 rounded-xl text-slate-600 hover:text-indigo-600 hover:border-indigo-100 shadow-sm transition-all" title="Sửa">
                                   <Edit size={16}/>
                                </button>
@@ -368,66 +331,7 @@ const ManageAdminEbooks = () => {
         </div>
       )}
 
-      {/* MODAL CÀI ĐẶT HIỂN THỊ EBOOK */}
-      {showSettingsModal && selectedEbook && (
-         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-           <div className="bg-white rounded-3xl shadow-xl w-full max-w-md overflow-hidden relative border border-slate-100">
-             <div className="p-6 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                <div>
-                   <h3 className="text-xl font-black text-slate-800 tracking-tight flex items-center gap-2 mb-1">
-                     <Settings size={20} className="text-indigo-600" /> Cài đặt Hiển thị
-                   </h3>
-                   <span className="text-xs font-bold text-slate-500 line-clamp-1">Ebook: {selectedEbook.title}</span>
-                </div>
-                <button onClick={() => setShowSettingsModal(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400">
-                  <X size={20} />
-                </button>
-             </div>
 
-             <div className="p-6 space-y-4">
-                <label className="flex items-center gap-3 p-4 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
-                  <input type="checkbox" checked={displayConfig.is_hot} onChange={(e) => setDisplayConfig({...displayConfig, is_hot: e.target.checked})} className="w-5 h-5 accent-rose-500" />
-                  <div>
-                     <div className="font-bold text-slate-700">Đánh dấu Hot</div>
-                     <div className="text-[10px] text-slate-400 font-medium">Xuất hiện với badge Lửa Đỏ và thuộc top xu hướng.</div>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-3 p-4 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
-                  <input type="checkbox" checked={displayConfig.is_featured} onChange={(e) => setDisplayConfig({...displayConfig, is_featured: e.target.checked})} className="w-5 h-5 accent-amber-500" />
-                  <div>
-                     <div className="font-bold text-slate-700">Đánh dấu Nổi Bật</div>
-                     <div className="text-[10px] text-slate-400 font-medium">Đẩy sách lên khu vực Gợi ý Nổi Bật.</div>
-                  </div>
-                </label>
-
-                <div className="p-4 border border-slate-100 rounded-2xl hover:bg-slate-50 transition-colors">
-                   <label className="flex items-center gap-3 cursor-pointer mb-3">
-                     <input type="checkbox" checked={displayConfig.in_carousel} onChange={(e) => setDisplayConfig({...displayConfig, in_carousel: e.target.checked})} className="w-5 h-5 accent-indigo-500" />
-                     <div>
-                        <div className="font-bold text-slate-700">Ghim vào Carousel</div>
-                        <div className="text-[10px] text-slate-400 font-medium">Hiển thị slider ảnh bìa to nhất trang chủ — Thứ tự được gán tự động.</div>
-                     </div>
-                   </label>
-                   {displayConfig.in_carousel && (
-                     <div className="ml-8 mt-2 flex items-center gap-2">
-                       <span className="text-[10px] text-slate-500 font-medium">Vị trí hiển thị:</span>
-                       <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">#{displayConfig.carousel_order}</span>
-                       <span className="text-[10px] text-slate-400">(tự động)</span>
-                     </div>
-                   )}
-                </div>
-             </div>
-
-             <div className="p-4 border-t border-slate-50 flex justify-end gap-3 bg-slate-50/50">
-                <button onClick={() => setShowSettingsModal(false)} className="px-6 py-2.5 font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-all">Hủy</button>
-                <Button onClick={saveSettings} isLoading={settingsMutation.isPending} className="flex items-center gap-2 px-6">
-                  <Save size={16}/> Lưu cài đặt
-                </Button>
-             </div>
-           </div>
-         </div>
-      )}
 
       {/* MODAL SỬA EBOOK */}
       {editingEbook && (

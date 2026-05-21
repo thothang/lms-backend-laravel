@@ -3,16 +3,15 @@ import {
   Users, BookOpen, Clock, AlertCircle,
   ArrowRight, CheckCircle, Search, Calendar,
   ArrowUpRight, ArrowDownRight, UserPlus, BookMarked,
-  FileText, MailCheck, Flame, Award, Image as ImageIcon
+  FileText, MailCheck
 } from 'lucide-react';
-import BookDisplayManager from '../../components/management/BookDisplayManager';
 import { librarianService } from '../../services/librarianService';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { handleApiError, showSuccess } from '../../utils/toastHelper';
 import { useAuth } from '../../context/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useBooks, useLibrarianReservations, useEbooks, useBorrows, useUpdateBookSettings, useUpdateEbookSettings, useConfirmReservation, useContactMessageStats } from '../../hooks/queries';
+import { useBooks, useLibrarianReservations, useEbooks, useBorrows, useConfirmReservation, useContactMessageStats } from '../../hooks/queries';
 import VirtualTable from '../../components/ui/VirtualTable';
 import DetailModal from '../../components/ui/DetailModal';
 
@@ -24,9 +23,6 @@ const LibrarianDashboard = () => {
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [selectedBorrow, setSelectedBorrow] = useState(null);
 
-  // Settings mutations for Book Display Manager
-  const updateBookSettingsMutation = useUpdateBookSettings();
-  const updateEbookSettingsMutation = useUpdateEbookSettings();
   const [showReservationModal, setShowReservationModal] = useState(false);
   const [showBorrowModal, setShowBorrowModal] = useState(false);
   const rawPerms = user?.permissions;
@@ -42,7 +38,6 @@ const LibrarianDashboard = () => {
   const booksQuery = useBooks({ limit: 200 });
   const reservationsQuery = useLibrarianReservations({ status: 'pending', limit: 10 });
   const ebooksQuery = useEbooks({ status: 'pending', limit: 100 });
-  const allEbooksQuery = useEbooks({ limit: 1000 }); // All ebooks for BookDisplayManager
   const borrowsQuery = useBorrows({ limit: 10 });
   const activeBorrowsQuery = useBorrows({ status: 'active', limit: 200 });
 
@@ -56,7 +51,6 @@ const LibrarianDashboard = () => {
   const allBooks = Array.isArray(booksQuery.data) ? booksQuery.data : (booksQuery.data?.data || []);
   const resList = Array.isArray(reservationsQuery.data) ? reservationsQuery.data : (reservationsQuery.data?.data || []);
   const ebookList = Array.isArray(ebooksQuery.data) ? ebooksQuery.data : (ebooksQuery.data?.data || []);
-  const allEbooksList = Array.isArray(allEbooksQuery.data) ? allEbooksQuery.data : (allEbooksQuery.data?.data || []);
   const borList = Array.isArray(borrowsQuery.data) ? borrowsQuery.data : (borrowsQuery.data?.data || []);
   const activeBorList = Array.isArray(activeBorrowsQuery.data) ? activeBorrowsQuery.data : (activeBorrowsQuery.data?.data || []);
   const contactStats = contactsQuery.data || { pending_count: 0 };
@@ -412,48 +406,6 @@ const LibrarianDashboard = () => {
           />
         </div>
       </div>
-
-      {/* Book Display Manager - Hot/Featured/Carousel */}
-      {hasPerm('can_manage_hot_books') && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-black text-slate-800 uppercase text-xs tracking-widest flex items-center gap-2">
-              <Flame size={16} className="text-amber-500" /> 
-              Quản lý hiển thị Sách & Ebook
-            </h3>
-            <div className="flex gap-2">
-              <span className="text-xs text-slate-500 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-amber-500"></span> Hot
-              </span>
-              <span className="text-xs text-slate-500 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Nổi bật
-              </span>
-              <span className="text-xs text-slate-500 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span> Carousel
-              </span>
-            </div>
-          </div>
-          <BookDisplayManager
-            books={allBooks}
-            ebooks={allEbooksList}
-            type="both"
-            onUpdateBook={async (id, settings) => {
-              try {
-                await updateBookSettingsMutation.mutateAsync({ book_id: id, ...settings });
-              } catch (err) {
-                handleApiError(err, 'Không thể cập nhật sách');
-              }
-            }}
-            onUpdateEbook={async (id, settings) => {
-              try {
-                await updateEbookSettingsMutation.mutateAsync({ ebook_id: id, ...settings });
-              } catch (err) {
-                handleApiError(err, 'Không thể cập nhật ebook');
-              }
-            }}
-          />
-        </div>
-      )}
 
       {/* Detail Modals */}
       <DetailModal

@@ -30,6 +30,6 @@ class SyncUserTotalDebt extends Command
 
         $this->info("Synced debt for {$users->count()} users");
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

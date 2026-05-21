@@ -1,41 +1,67 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, MoreVertical, Lock, Unlock, ArrowUpCircle
 } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import SearchInput from '../../components/ui/SearchInput';
 import Pagination from '../../components/ui/Pagination';
 import { usePagination } from '../../hooks/usePagination';
 import DetailModal from '../../components/ui/DetailModal';
 import { handleApiError } from '../../utils/toastHelper';
 import { useUsers, useUpdateUserStatus, useMakeAuthor } from '../../hooks/queries';
+import api from '../../services/api';
 
 const ManageUsers = () => {
+  const queryClient = useQueryClient();
   const [filterRole, setFilterRole] = useState('all');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
-  // React Query hooks
-  const { data: usersData, isLoading, refetch } = useUsers();
-  const updateStatusMutation = useUpdateUserStatus();
-  const makeAuthorMutation = useMakeAuthor();
-
   // Pagination
   const { 
     currentPage, 
     perPage, 
     setCurrentPage, 
-    resetPage,
-    calculateTotalPages 
+    resetPage 
   } = usePagination({ defaultPage: 1, defaultPerPage: 10 });
-
-  // Search state (managed internally for debounce)
-  const [searchTerm, setSearchTerm] = useState('');
 
   // Reset page when search/filter changes
   useEffect(() => {
     resetPage();
-  }, [searchTerm, filterRole]);
+  }, [searchTerm, filterRole, resetPage]);
+
+  // React Query hook with server-side params
+  const { data: usersData, isLoading, refetch } = useUsers({ 
+    page: currentPage, 
+    limit: perPage, 
+    search: searchTerm,
+    role: filterRole !== 'all' ? filterRole : undefined
+  });
+
+  const usersList = usersData?.data || [];
+  const totalItems = usersData?.total || 0;
+  const totalPages = Math.ceil(totalItems / perPage);
+
+  // Prefetch next page
+  useEffect(() => {
+    if (currentPage < totalPages) {
+      const nextParams = { 
+        page: currentPage + 1, 
+        limit: perPage, 
+        search: searchTerm,
+        role: filterRole !== 'all' ? filterRole : undefined
+      };
+      queryClient.prefetchQuery({
+        queryKey: ['admin', 'users', nextParams],
+        queryFn: () => api.get('/admin/users', { params: nextParams }).then(res => res.data)
+      });
+    }
+  }, [currentPage, totalPages, perPage, searchTerm, filterRole, queryClient]);
+
+  const updateStatusMutation = useUpdateUserStatus();
+  const makeAuthorMutation = useMakeAuthor();
 
   const handleStatusToggle = (user) => {
     const newStatus = user.status === 'active' ? 'locked' : 'active';
@@ -58,24 +84,6 @@ const ManageUsers = () => {
     });
   };
 
-  // Filter users (computed on the fly)
-  const filteredUsers = useMemo(() => {
-    const users = usersData?.data || usersData || [];
-    return users.filter(user => {
-      const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole = filterRole === 'all' || user.role === filterRole;
-      return matchesSearch && matchesRole;
-    });
-  }, [usersData, searchTerm, filterRole]);
-
-  // Paginated users
-  const totalPages = calculateTotalPages(filteredUsers.length);
-  const paginatedUsers = useMemo(() => {
-    const start = (currentPage - 1) * perPage;
-    return filteredUsers.slice(start, start + perPage);
-  }, [filteredUsers, currentPage, perPage]);
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
@@ -87,7 +95,7 @@ const ManageUsers = () => {
         <div className="flex gap-3">
            <div className="bg-white px-6 py-3 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
               <Users size={20} className="text-indigo-600" />
-              <span className="font-black text-slate-800">{filteredUsers.length} <span className="text-slate-400 font-bold ml-1 text-xs uppercase">Users</span></span>
+              <span className="font-black text-slate-800">{totalItems} <span className="text-slate-400 font-bold ml-1 text-xs uppercase">Users</span></span>
            </div>
         </div>
       </div>
@@ -143,7 +151,7 @@ const ManageUsers = () => {
                     <td className="px-6 py-4"><div className="h-8 bg-slate-100 rounded w-8 ml-auto"></div></td>
                   </tr>
                 ))
-              ) : paginatedUsers.map((user) => (
+              ) : usersList.map((user) => (
                 <tr 
                   key={user.id} 
                   className="hover:bg-slate-50/50 transition-colors group cursor-pointer"
@@ -216,7 +224,7 @@ const ManageUsers = () => {
               ))}
             </tbody>
           </table>
-          {!isLoading && filteredUsers.length === 0 && (
+          {!isLoading && usersList.length === 0 && (
             <div className="p-20 text-center text-slate-400 italic">Không tìm thấy người dùng nào.</div>
           )}
         </div>
@@ -225,7 +233,7 @@ const ManageUsers = () => {
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={filteredUsers.length}
+          totalItems={totalItems}
           perPage={perPage}
           onPageChange={setCurrentPage}
           isLoading={isLoading}

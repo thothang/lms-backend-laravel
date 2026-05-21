@@ -32,7 +32,7 @@ class CacheWarmup extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
         $this->info('Starting cache warmup...');
 
@@ -56,6 +56,8 @@ class CacheWarmup extends Command
 
         $duration = round(microtime(true) - $start, 2);
         $this->info("Cache warmup completed in {$duration} seconds.");
+
+        return self::SUCCESS;
     }
 
     /**

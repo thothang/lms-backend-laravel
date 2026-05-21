@@ -28,11 +28,7 @@ class SearchController extends Controller
             $bookQuery = Book::with(['category', 'reviews']);
 
             if ($keyword) {
-                $bookQuery->where(function ($q) use ($keyword) {
-                    $q->where('title', 'like', "%{$keyword}%")
-                      ->orWhere('author_name', 'like', "%{$keyword}%")
-                      ->orWhere('publisher', 'like', "%{$keyword}%");
-                });
+                $bookQuery->search($keyword);
             }
 
             if ($categoryId) {
@@ -58,12 +54,7 @@ class SearchController extends Controller
                 ->approved();
 
             if ($keyword) {
-                $ebookQuery->where(function ($q) use ($keyword) {
-                    $q->where('title', 'like', "%{$keyword}%")
-                      ->orWhereHas('author', function ($q) use ($keyword) {
-                          $q->where('name', 'like', "%{$keyword}%");
-                      });
-                });
+                $ebookQuery->search($keyword);
             }
 
             if ($categoryId) {

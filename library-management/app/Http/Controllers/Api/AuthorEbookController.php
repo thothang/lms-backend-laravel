@@ -254,12 +254,13 @@ class AuthorEbookController extends Controller
             $authorPercent = config('library.ebook_author_revenue_percent', 60);
 
             // Get purchases for author's ebooks
+            $limit = $request->input('limit', 1000);
             $purchases = EbookPurchase::whereHas('ebook', function ($query) use ($user) {
                     $query->where('author_id', $user->id);
                 })
                 ->with(['ebook:id,title,price', 'user:id,name'])
                 ->orderBy('purchase_date', 'desc')
-                ->paginate(20);
+                ->paginate($limit);
 
             $data = $purchases->getCollection()->map(function ($purchase) use ($authorPercent) {
                 $totalAmount = (float) $purchase->amount;
@@ -423,7 +424,8 @@ class AuthorEbookController extends Controller
                 $query->where('status', $request->status);
             }
 
-            $requests = $query->orderBy('created_at', 'desc')->paginate(20);
+            $limit = $request->input('limit', 1000);
+            $requests = $query->orderBy('created_at', 'desc')->paginate($limit);
 
             return response()->json($requests);
         }, 'Không thể lấy lịch sử rút tiền');

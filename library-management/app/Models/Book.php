@@ -139,6 +139,17 @@ class Book extends Model
         return $query->where('in_carousel', true)
             ->orderBy('carousel_order');
     }
+
+    // Search books
+    public function scopeSearch($query, $keyword)
+    {
+        if (empty($keyword)) return $query;
+        return $query->where(function($q) use ($keyword) {
+            $q->where('title', 'like', "%{$keyword}%")
+              ->orWhere('author_name', 'like', "%{$keyword}%");
+        });
+    }
+
     public function getCoverImageAttribute($value)
     {
         if ($value && !filter_var($value, FILTER_VALIDATE_URL)) {

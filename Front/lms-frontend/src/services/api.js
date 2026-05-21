@@ -27,7 +27,12 @@ const CACHE_BLACKLIST = [
   '/contact-messages',
   '/author/earnings',
   '/author/withdraw-history',
-  '/author/withdraw'
+  '/author/withdraw',
+  '/my-ebooks',
+  '/my-borrows',
+  '/my-reservations',
+  '/access',
+  '/read'
 ];
 
 import { toast } from 'sonner';
@@ -181,9 +186,15 @@ api.interceptors.response.use(
   }
 );
 
-// Public method to manually clear cache
+// Public method to manually clear user-private cache while keeping general books/ebooks
 api.clearCache = () => {
-  apiCache.clear();
+  const keepPatterns = ['/books', '/categories'];
+  for (const [key] of apiCache) {
+    const shouldKeep = keepPatterns.some(pat => key.includes(pat));
+    if (!shouldKeep) {
+      apiCache.delete(key);
+    }
+  }
 };
 
 // Public method to clear cache for specific endpoint pattern

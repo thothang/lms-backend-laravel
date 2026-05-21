@@ -44,7 +44,7 @@ class AuthController extends Controller
         ]);
 
         // Send Email verification
-        $verifyUrl = url('/api/verify-email/' . $verificationToken);
+        $verifyUrl = config('services.frontend_url', 'http://localhost:5173') . '/verify-email/' . $verificationToken;
         try {
             Mail::to($user->email)->send(new VerifyEmailMail($user, $verifyUrl));
         } catch (\Exception $e) {
@@ -93,12 +93,17 @@ class AuthController extends Controller
     /**
      * Verify user email
      */
-    public function verifyEmail(string $token): RedirectResponse
+    public function verifyEmail(Request $request, string $token)
     {
         $user = User::where('verification_token', $token)->first();
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
+        $frontendUrl = config('services.frontend_url', 'http://localhost:5173');
 
         if (!$user) {
+            if ($request->expectsJson() || $request->wantsJson()) {
+                return response()->json([
+                    'message' => 'Link xác thực không hợp lệ hoặc đã hết hạn.'
+                ], 400);
+            }
             return redirect()->away($frontendUrl . '/?verified=0&message=invalid_token');
         }
 
@@ -117,9 +122,18 @@ class AuthController extends Controller
         ]);
 
         // Generate JWT token for auto-login
-        $token = JWTAuth::fromUser($user);
+        $jwtToken = JWTAuth::fromUser($user);
 
-        return redirect()->away($frontendUrl . '/?verified=1&token=' . $token);
+        if ($request->expectsJson() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Xác thực email thành công!',
+                'access_token' => $jwtToken,
+                'user' => $user
+            ]);
+        }
+
+        return redirect()->away($frontendUrl . '/?verified=1&token=' . $jwtToken);
     }
 
     /**
@@ -212,6 +226,8 @@ class AuthController extends Controller
     {
         $user = JWTAuth::parseToken()->authenticate();
 
+        $user->load('rolePermission');
+
         $userData = [
             'id' => $user->id,
             'name' => $user->name,
@@ -223,6 +239,9 @@ class AuthController extends Controller
             'status' => $user->status,
             'balance' => $user->balance,
             'total_debt' => $user->total_debt,
+            'permissions' => $user->role === 'librarian' 
+                ? ($user->rolePermission?->getAllPermissions() ?? [])
+                : [],
         ];
 
         // No CCCD required

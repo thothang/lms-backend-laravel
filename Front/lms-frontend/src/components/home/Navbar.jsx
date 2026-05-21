@@ -110,6 +110,12 @@ const Navbar = () => {
     markNotificationReadMutation.mutate(id);
   };
 
+  const handleMouseEnterNotification = (notif) => {
+    if (!notif.is_read && !notif.read_at) {
+      markAsRead(notif.id);
+    }
+  };
+
   const executeLogout = async () => {
     setIsLoggingOut(true);
     await logout();
@@ -333,7 +339,7 @@ const Navbar = () => {
                     
                     {/* Notifications Dropdown */}
                     {showNotifications && (
-                      <div className="absolute right-0 top-full w-80 max-w-[calc(100vw-2rem)] bg-white rounded-xl shadow-2xl border border-slate-100 z-50 mt-2">
+                      <div className="fixed sm:absolute inset-x-4 sm:inset-x-auto sm:right-0 sm:left-auto top-16 sm:top-full w-auto sm:w-80 max-w-[calc(100vw-2rem)] sm:max-w-none bg-white rounded-xl shadow-2xl border border-slate-100 z-50 mt-2 mx-auto sm:mx-0">
                         <div className="p-4 border-b border-slate-100 flex justify-between items-center">
                           <h3 className="font-semibold text-slate-800">Thông báo</h3>
                           <button
@@ -362,6 +368,7 @@ const Navbar = () => {
                                     setSelectedNotification(notif);
                                     setShowNotifications(false);
                                   }}
+                                  onMouseEnter={() => handleMouseEnterNotification(notif)}
                                   className={`p-4 cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors ${!notif.is_read ? 'bg-indigo-50/50' : ''}`}
                                 >
                                   <div className="flex items-start gap-3">
@@ -821,6 +828,7 @@ const Navbar = () => {
                         if (!notif.is_read) markAsRead(notif.id);
                         setSelectedNotification(notif);
                       }}
+                      onMouseEnter={() => handleMouseEnterNotification(notif)}
                       className={`bg-white p-4 rounded-xl cursor-pointer transition-all hover:shadow-md border ${
                         !notif.is_read
                           ? 'border-l-4 border-l-indigo-500 border-slate-100'

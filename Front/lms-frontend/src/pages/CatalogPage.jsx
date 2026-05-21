@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useCategories, useSearch } from '../hooks/queries';
 import { motion } from 'framer-motion';
@@ -41,7 +41,9 @@ const CatalogPage = () => {
   const { data: searchData, isLoading: isLoading } = useSearch({ ...filters, limit: 1000 });
 
   // Process search data
-  const books = searchData ? (() => {
+  const books = React.useMemo(() => {
+    if (!searchData) return [];
+    
     const booksData = searchData?.books?.data || [];
     const ebooksData = searchData?.ebooks?.data || [];
 
@@ -67,7 +69,7 @@ const CatalogPage = () => {
     });
 
     return combined;
-  })() : [];
+  }, [searchData, filters.type]);
 
   // Reset page on filter change
   useEffect(() => {

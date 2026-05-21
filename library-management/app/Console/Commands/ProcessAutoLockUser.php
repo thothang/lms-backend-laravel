@@ -42,6 +42,6 @@ class ProcessAutoLockUser extends Command
 
         $this->info("Locked {$usersToLock->count()} users with overdue debts");
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

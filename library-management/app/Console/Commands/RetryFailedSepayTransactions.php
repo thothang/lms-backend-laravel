@@ -46,6 +46,6 @@ class RetryFailedSepayTransactions extends Command
 
         $this->info("Processed {$pendingTransactions->count()} pending Sepay transactions");
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

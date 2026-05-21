@@ -346,6 +346,9 @@ class BorrowController extends Controller
                 'comment' => $request->comment,
             ]);
 
+            // Clear book cache to reflect new review immediately
+            Cache::forget("books.show.{$bookId}");
+
             // Get book info for notification
             $book = \App\Models\Book::find($bookId);
 
@@ -407,6 +410,9 @@ class BorrowController extends Controller
                 'rating' => $request->rating,
                 'comment' => $request->comment,
             ]);
+
+            // Clear ebook cache to reflect new review immediately
+            Cache::forget("ebooks.show.{$ebookId}");
 
             // Get ebook info for notification
             $ebook = \App\Models\Ebook::find($ebookId);

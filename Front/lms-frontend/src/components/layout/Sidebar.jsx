@@ -4,7 +4,7 @@ import {
   LayoutDashboard, BookOpen, Users, FileText, 
   Settings, LogOut, ChevronRight, BookMarked, 
   Wallet, MessageSquare, ShieldCheck, MailCheck,
-  Menu, X, AlertCircle
+  Menu, X, AlertCircle, MonitorPlay
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -158,6 +158,7 @@ const Sidebar = () => {
     if (hasPerm('can_manage_users')) menu.push({ name: 'Quản lý Người dùng', path: '/librarian/users', icon: Users });
     if (hasPerm('can_view_reports')) menu.push({ name: 'Xem Báo cáo', path: '/librarian/reports', icon: FileText });
     if (hasPerm('can_manage_messages')) menu.push({ name: 'Quản lý Tin nhắn', path: '/librarian/messages', icon: MailCheck });
+    menu.push({ name: 'Quản lý Hiển thị', path: '/librarian/display', icon: MonitorPlay });
     return menu;
   };
 
@@ -176,6 +177,7 @@ const Sidebar = () => {
       { name: 'Quản lý Ebook', path: '/admin/ebooks', icon: FileText },
       { name: 'Quản lý kho sách', path: '/admin/books', icon: BookMarked },
       { name: 'Quản lý rút tiền', path: '/admin/withdrawals', icon: Wallet },
+      { name: 'Quản lý hiển thị', path: '/admin/display', icon: MonitorPlay },
       { name: 'Cấu hình hệ thống', path: '/admin/settings', icon: Settings },
     ]
   };

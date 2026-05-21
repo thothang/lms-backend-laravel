@@ -9,15 +9,62 @@ class ErrorBoundary extends Component {
       hasError: false, 
       error: null, 
       errorInfo: null,
-      errorId: Date.now()
+      errorId: Date.now(),
+      isChunkLoadFailed: false
     };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true };
+    const isChunkLoadFailed = error && (
+      error.message?.includes('Failed to fetch dynamically imported module') || 
+      error.message?.includes('error loading dynamically imported module') ||
+      error.message?.includes('Importing a module script failed')
+    );
+    return { 
+      hasError: true,
+      isChunkLoadFailed: !!isChunkLoadFailed
+    };
   }
 
   componentDidCatch(error, errorInfo) {
+    const isChunkLoadFailed = error && (
+      error.message?.includes('Failed to fetch dynamically imported module') || 
+      error.message?.includes('error loading dynamically imported module') ||
+      error.message?.includes('Importing a module script failed')
+    );
+       
+    if (isChunkLoadFailed) {
+      const chunkReloadKey = 'chunk-failed-reload';
+      const lastReload = sessionStorage.getItem(chunkReloadKey);
+      const now = Date.now();
+      if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+        sessionStorage.setItem(chunkReloadKey, now.toString());
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            const promises = registrations.map(r => r.unregister());
+            Promise.all(promises).then(() => {
+              const url = new URL(window.location.href);
+              url.searchParams.set('t', Date.now().toString());
+              window.location.replace(url.toString());
+            }).catch(() => {
+              const url = new URL(window.location.href);
+              url.searchParams.set('t', Date.now().toString());
+              window.location.replace(url.toString());
+            });
+          }).catch(() => {
+            const url = new URL(window.location.href);
+            url.searchParams.set('t', Date.now().toString());
+            window.location.replace(url.toString());
+          });
+        } else {
+          const url = new URL(window.location.href);
+          url.searchParams.set('t', Date.now().toString());
+          window.location.replace(url.toString());
+        }
+        return;
+      }
+    }
+
     this.setState({
       error,
       errorInfo,
@@ -27,7 +74,28 @@ class ErrorBoundary extends Component {
 
   handleReload = () => {
     this.setState({ hasError: false, error: null, errorInfo: null });
-    window.location.reload();
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        const promises = registrations.map(r => r.unregister());
+        Promise.all(promises).then(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('t', Date.now().toString());
+          window.location.replace(url.toString());
+        }).catch(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('t', Date.now().toString());
+          window.location.replace(url.toString());
+        });
+      }).catch(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('t', Date.now().toString());
+        window.location.replace(url.toString());
+      });
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.set('t', Date.now().toString());
+      window.location.replace(url.toString());
+    }
   };
 
   handleGoHome = () => {
@@ -37,6 +105,16 @@ class ErrorBoundary extends Component {
 
   render() {
     if (this.state.hasError) {
+      if (this.state.isChunkLoadFailed) {
+        return (
+          <div className="min-h-[50vh] flex flex-col items-center justify-center bg-slate-50 px-4">
+            <div className="flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              <p className="text-sm text-slate-500 font-medium animate-pulse">Đang cập nhật phiên bản mới...</p>
+            </div>
+          </div>
+        );
+      }
       const { fallback: FallbackComponent, fallbackProps, showDetails = false } = this.props;
       
       // If a custom fallback is provided, use it

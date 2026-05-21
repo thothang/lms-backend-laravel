@@ -18,6 +18,6 @@ class RemoveNewTagFromBooks extends Command
         
         $this->info("No books with 'new' tag to process (feature not implemented)");
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

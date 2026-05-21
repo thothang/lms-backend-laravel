@@ -69,6 +69,6 @@ class CheckOverdueBorrows extends Command
 
         $this->info("Processed {$overdueBorrows->count()} overdue borrows");
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

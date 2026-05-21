@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { AuthProvider } from './context/AuthContext';
@@ -47,7 +47,7 @@ const LibrarianFinance = lazy(() => import('./pages/Management/LibrarianFinance'
 const LibrarianUsers = lazy(() => import('./pages/Management/LibrarianUsers'));
 const LibrarianReports = lazy(() => import('./pages/Management/LibrarianReports'));
 const LibrarianMessages = lazy(() => import('./pages/Management/LibrarianMessages'));
-const AdminHotFeaturedManager = lazy(() => import('./pages/Management/AdminHotFeaturedManager'));
+const DisplayManager = lazy(() => import('./pages/Management/DisplayManager'));
 
 // Loading fallback
 const PageLoader = () => (
@@ -55,6 +55,45 @@ const PageLoader = () => (
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
   </div>
 );
+
+// Fallback component to handle cases where Service Worker intercepts API routes (like email verification)
+const ApiRedirectFallback = () => {
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        const promises = registrations.map(r => r.unregister());
+        Promise.all(promises).then(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('t', Date.now().toString());
+          window.location.replace(url.toString());
+        }).catch(() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set('t', Date.now().toString());
+          window.location.replace(url.toString());
+        });
+      }).catch(() => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('t', Date.now().toString());
+        window.location.replace(url.toString());
+      });
+    } else {
+      const url = new URL(window.location.href);
+      url.searchParams.set('t', Date.now().toString());
+      window.location.replace(url.toString());
+    }
+  }, []);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 p-4 text-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        <p className="text-sm text-slate-500 font-medium animate-pulse">
+          Đang kết nối tới hệ thống xác thực...
+        </p>
+      </div>
+    </div>
+  );
+};
 
 function App() {
   return (
@@ -71,6 +110,7 @@ function App() {
               <Route path="/login" element={<AuthPage />} />
               <Route path="/register" element={<AuthPage />} />
               <Route path="/verify-email/:token" element={<VerifyEmail />} />
+              <Route path="/api/*" element={<ApiRedirectFallback />} />
               <Route path="/about" element={<PageWrapper><AboutPage /></PageWrapper>} />
               <Route path="/contact" element={<PageWrapper><ContactPage /></PageWrapper>} />
               <Route path="/notifications" element={<PageWrapper><NotificationPanel /></PageWrapper>} />
@@ -123,6 +163,7 @@ function App() {
                 <Route path="users" element={<LibrarianUsers />} />
                 <Route path="reports" element={<LibrarianReports />} />
                 <Route path="messages" element={<LibrarianMessages />} />
+                <Route path="display" element={<DisplayManager />} />
               </Route>
 
               <Route path="/admin" element={
@@ -138,7 +179,7 @@ function App() {
                 <Route path="ebooks" element={<ManageAdminEbooks />} />
                 <Route path="books" element={<ManageBooks />} />
                 <Route path="withdrawals" element={<ManageWithdrawals />} />
-                <Route path="hot-featured" element={<AdminHotFeaturedManager />} />
+                <Route path="display" element={<DisplayManager />} />
                 <Route path="settings" element={<SystemSettings />} />
               </Route>
             </Routes>

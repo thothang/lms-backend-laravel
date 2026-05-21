@@ -28,7 +28,7 @@ class FixDuplicateTopups extends Command
         
         if ($duplicates->isEmpty()) {
             $this->info('Không có topup trùng lặp!');
-            return Command::SUCCESS;
+            return self::SUCCESS;
         }
         
         $this->warn('Tìm thấy ' . $duplicates->count() . ' giao dịch trùng lặp:');
@@ -42,7 +42,8 @@ class FixDuplicateTopups extends Command
             $this->line("Transaction ID: {$dup->transaction_id}");
             foreach ($records as $record) {
                 $user = User::find($record->user_id);
-                $this->line("  - ID: {$record->id}, User ID: {$record->user_id} ({$user->name ?? 'N/A'}), Amount: " . number_format($record->amount) . " VND, Time: {$record->created_at}");
+                $userName = $user ? ($user->name ?? 'N/A') : 'N/A';
+                $this->line("  - ID: {$record->id}, User ID: {$record->user_id} ({$userName}), Amount: " . number_format($record->amount) . " VND, Time: {$record->created_at}");
             }
             
             // Giữ lại record đầu tiên, xóa các record còn lại
@@ -70,6 +71,6 @@ class FixDuplicateTopups extends Command
         
         $this->info('=== Hoàn tất ===');
         
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

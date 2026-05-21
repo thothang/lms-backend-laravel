@@ -13,7 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 const AuthPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, syncFromStorage } = useAuth();
   const [isLogin, setIsLogin] = useState(location.pathname !== '/register');
 
   // Login form state
@@ -144,11 +144,12 @@ const AuthPage = () => {
       onSuccess: (response) => {
         if (response.access_token) {
           tokenManager.updateAuth(response.access_token, response.user, response.user?.balance);
+          syncFromStorage();
           showSuccess('Đăng ký thành công! Đang tự động đăng nhập...');
           setIsRegisterSuccess(true);
           
           setTimeout(() => {
-            window.location.replace('/');
+            navigate('/');
           }, 2000);
         } else {
           showSuccess(response.message || 'Đăng ký thành công. Vui lòng kiểm tra email để kích hoạt tài khoản.');

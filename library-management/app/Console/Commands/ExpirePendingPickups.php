@@ -38,7 +38,7 @@ class ExpirePendingPickups extends Command
 
         if ($expiredBorrows->isEmpty()) {
             $this->info('No expired pending pickup requests found.');
-            return Command::SUCCESS;
+            return self::SUCCESS;
         }
 
         $this->info("Found {$expiredBorrows->count()} expired pending pickup requests.");
@@ -58,6 +58,6 @@ class ExpirePendingPickups extends Command
         }
 
         $this->info('Expiration process completed.');
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

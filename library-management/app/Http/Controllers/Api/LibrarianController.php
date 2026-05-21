@@ -444,7 +444,8 @@ class LibrarianController extends Controller
                 $query->where('status', $request->status);
             }
 
-            $reservations = $query->orderBy('created_at', 'desc')->paginate(20);
+            $limit = $request->input('limit', 20);
+            $reservations = $query->orderBy('created_at', 'desc')->paginate($limit);
 
             return response()->json($reservations);
         }, 'Không thể lấy danh sách reservation');
@@ -1156,7 +1157,8 @@ class LibrarianController extends Controller
                 });
             }
 
-            $users = $query->orderBy('created_at', 'desc')->paginate(20);
+            $limit = $request->input('limit', 20);
+            $users = $query->orderBy('created_at', 'desc')->paginate($limit);
 
             return response()->json($users);
         }, 'Không thể lấy danh sách người dùng');
@@ -1502,13 +1504,14 @@ class LibrarianController extends Controller
             // Search
             if ($request->has('search') && !empty($request->search)) {
                 $search = $request->search;
-                $query->where(function ($q) use ($search) {
-                    $q->where('email', 'like', "%{$search}%")
-                  ->orWhere('name', 'like', "%{$search}%")
-                  ->orWhere('subject', 'like', "%{$search}%")
-                  ->orWhere('message', 'like', "%{$search}%");
-            });
-        }
+                $lowerSearch = mb_strtolower($search, 'UTF-8');
+                $query->where(function ($q) use ($lowerSearch) {
+                    $q->where(\DB::raw('LOWER(email)'), 'like', "%{$lowerSearch}%")
+                      ->orWhere(\DB::raw('LOWER(name)'), 'like', "%{$lowerSearch}%")
+                      ->orWhere(\DB::raw('LOWER(subject)'), 'like', "%{$lowerSearch}%")
+                      ->orWhere(\DB::raw('LOWER(message)'), 'like', "%{$lowerSearch}%");
+                });
+            }
 
         $messages = $query->orderBy('created_at', 'desc')
             ->paginate(20);

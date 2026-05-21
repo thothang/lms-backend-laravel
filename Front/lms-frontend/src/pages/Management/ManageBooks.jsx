@@ -20,7 +20,6 @@ import {
   useDeleteBook,
   useAddCopy,
   useDeleteCopy,
-  useUpdateBookSettings,
   useBookDetails,
 } from '../../hooks/queries';
 
@@ -53,11 +52,8 @@ const ManageBooks = () => {
   const deleteBookMutation = useDeleteBook();
   const addCopyMutation = useAddCopy();
   const deleteCopyMutation = useDeleteCopy();
-  const updateBookSettingsMutation = useUpdateBookSettings();
-
-  // Combined loading state for mutations
   const isSubmitting = createBookMutation.isPending || updateBookMutation.isPending || 
-    addCopyMutation.isPending || deleteCopyMutation.isPending || updateBookSettingsMutation.isPending;
+    addCopyMutation.isPending || deleteCopyMutation.isPending;
 
   // Debounce search term
   useEffect(() => {
@@ -70,9 +66,6 @@ const ManageBooks = () => {
   // Modals State
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingBook, setEditingBook] = useState(null);
-  
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [settingsBook, setSettingsBook] = useState(null);
 
   const [isCopiesModalOpen, setIsCopiesModalOpen] = useState(false);
   const [copiesBook, setCopiesBook] = useState(null);
@@ -93,15 +86,28 @@ const ManageBooks = () => {
   const [formData, setFormData] = useState(defaultForm);
   const [coverPreview, setCoverPreview] = useState(null);
 
-  const defaultSettings = { is_hot: false, is_featured: false, in_carousel: false, carousel_order: 1 };
-  const [settingsData, setSettingsData] = useState(defaultSettings);
-
   const filteredBooks = books; // Let Backend handle filtering
 
   // Reset page on filter/search change
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearchTerm, listFilter]);
+
+  // Prefetch next page
+  useEffect(() => {
+    if (currentPage < totalPages) {
+      const nextParams = {
+        page: currentPage + 1, 
+        limit: itemsPerPage,
+        keyword: debouncedSearchTerm,
+        type: listFilter === 'all' ? undefined : listFilter
+      };
+      queryClient.prefetchQuery({
+        queryKey: ['books', nextParams],
+        queryFn: () => catalogService.getBooks(nextParams).then(res => res.data || res)
+      });
+    }
+  }, [currentPage, totalPages, itemsPerPage, debouncedSearchTerm, listFilter, queryClient]);
 
   // --- CRUD BOOK ---
   const handleOpenForm = (book = null) => {
@@ -171,35 +177,6 @@ const ManageBooks = () => {
       await deleteBookMutation.mutateAsync(id);
     } catch (err) {
       handleApiError(err, 'Lỗi xóa sách.');
-    }
-  };
-
-  // --- SETTINGS (HOT/CAROUSEL) ---
-  const handleOpenSettings = async (book) => {
-    setSettingsBook(book);
-    setIsSettingsModalOpen(true);
-    // Tự động tính carousel_order = max hiện tại + 1 nếu sách chưa có trong carousel
-    const maxOrder = books
-      .filter(b => b.in_carousel)
-      .reduce((max, b) => Math.max(max, b.carousel_order || 0), 0);
-    setSettingsData({
-      is_hot: book.is_hot || false,
-      is_featured: book.is_featured || false,
-      in_carousel: book.in_carousel || false,
-      carousel_order: book.in_carousel ? (book.carousel_order || 1) : (maxOrder + 1)
-    });
-  };
-
-  const submitSettings = async (e) => {
-    e.preventDefault();
-    try {
-      await updateBookSettingsMutation.mutateAsync({
-        book_id: settingsBook.id,
-        ...settingsData
-      });
-      setIsSettingsModalOpen(false);
-    } catch (err) {
-      handleApiError(err);
     }
   };
 
@@ -400,14 +377,7 @@ const ManageBooks = () => {
                   </td>
                   <td className="px-6 py-6 transition-all">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                       <button 
-                         onClick={() => handleOpenSettings(book)} 
-                         onMouseEnter={() => prefetchBook(book.id)}
-                         className="p-2.5 bg-white border border-slate-100 rounded-xl text-amber-500 hover:bg-amber-50 shadow-sm transition-all" 
-                         title="Cài đặt Hiển thị"
-                       >
-                         <Star size={16}/>
-                       </button>
+
                        <button 
                          onClick={() => handleOpenForm(book)} 
                          onMouseEnter={() => prefetchBook(book.id)}
@@ -677,71 +647,7 @@ const ManageBooks = () => {
          </div>
       </Modal>
 
-      {/* SETTINGS MODAL */}
-      <Modal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} title={`Cài đặt Hiển thị: ${settingsBook?.title}`}>
-         <form onSubmit={submitSettings} className="space-y-6">
-            <div className="space-y-4">
-              <label className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${settingsData.is_hot ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-400'}`}>
-                     <Star size={16} className={settingsData.is_hot ? 'fill-current' : ''} />
-                  </div>
-                  <div>
-                    <div className="font-bold text-sm text-slate-800">Đánh dấu "Sách Hot"</div>
-                    <div className="text-[10px] text-slate-500">Hiển thị trong danh sách Sách Hot</div>
-                  </div>
-                </div>
-                <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" 
-                  checked={settingsData.is_hot} onChange={e => setSettingsData(p => ({...p, is_hot: e.target.checked}))} 
-                />
-              </label>
 
-              <label className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${settingsData.is_featured ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-400'}`}>
-                     <Check size={16} />
-                  </div>
-                  <div>
-                    <div className="font-bold text-sm text-slate-800">Sách Nổi Bật</div>
-                    <div className="text-[10px] text-slate-500">Khu vực đề xuất trung tâm</div>
-                  </div>
-                </div>
-                <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" 
-                  checked={settingsData.is_featured} onChange={e => setSettingsData(p => ({...p, is_featured: e.target.checked}))} 
-                />
-              </label>
-
-              <div className="p-4 border border-slate-100 rounded-2xl space-y-4 bg-slate-50/50">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${settingsData.in_carousel ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
-                       <BookOpen size={16} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm text-slate-800">Đưa lên Bảng chuyền (Carousel)</div>
-                      <div className="text-[10px] text-slate-500">Banner lớn ở trang chủ — Thứ tự được gán tự động</div>
-                    </div>
-                  </div>
-                  <input type="checkbox" className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" 
-                    checked={settingsData.in_carousel} onChange={e => setSettingsData(p => ({...p, in_carousel: e.target.checked}))} 
-                  />
-                </label>
-                {settingsData.in_carousel && (
-                  <div className="pt-3 border-t border-slate-200 flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500 font-medium">Vị trí hiển thị:</span>
-                    <span className="text-xs font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded">#{settingsData.carousel_order}</span>
-                    <span className="text-[10px] text-slate-400">(tự động)</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-slate-50">
-              <Button variant="outline" onClick={() => setIsSettingsModalOpen(false)} type="button">Đóng</Button>
-              <Button type="submit" isLoading={isSubmitting}>Lưu cấu hình</Button>
-            </div>
-         </form>
-      </Modal>
 
       {/* Book Detail Modal */}
       <DetailModal

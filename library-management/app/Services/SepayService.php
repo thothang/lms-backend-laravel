@@ -16,9 +16,9 @@ class SepayService
 
     public function __construct()
     {
-        $this->merchantId = config('services.sepay.merchant_id', env('SEPAY_MERCHANT_ID'));
-        $this->secretKey = config('services.sepay.secret_key', env('SEPAY_SECRET_KEY'));
-        $this->env = config('services.sepay.env', env('SEPAY_ENV', 'sandbox'));
+        $this->merchantId = config('services.sepay.merchant_id');
+        $this->secretKey = config('services.sepay.secret_key');
+        $this->env = config('services.sepay.env', 'sandbox');
         
         $this->client = new SePayClient($this->merchantId, $this->secretKey, $this->env);
         
@@ -34,8 +34,8 @@ class SepayService
     {
         try {
             // Use public callback URL if available (for ngrok/production)
-            $frontendUrl = env('PUBLIC_CALLBACK_URL') 
-                ? env('PUBLIC_CALLBACK_URL') 
+            $frontendUrl = config('services.public_callback_url') 
+                ? config('services.public_callback_url') 
                 : config('services.frontend_url', 'http://localhost:8080');
 
             $checkoutData = CheckoutBuilder::make()
@@ -114,8 +114,8 @@ class SepayService
     {
         try {
             // Use public callback URL if available (for ngrok/production)
-            $frontendUrl = env('PUBLIC_CALLBACK_URL') 
-                ? env('PUBLIC_CALLBACK_URL') 
+            $frontendUrl = config('services.public_callback_url') 
+                ? config('services.public_callback_url') 
                 : config('services.frontend_url', 'http://localhost:8080');
 
             $checkoutData = CheckoutBuilder::make()

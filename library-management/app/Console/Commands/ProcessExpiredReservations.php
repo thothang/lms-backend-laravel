@@ -29,6 +29,6 @@ class ProcessExpiredReservations extends Command
 
         $this->info("Processed {$expiredReservations->count()} expired reservations");
 
-        return Command::SUCCESS;
+        return self::SUCCESS;
     }
 }

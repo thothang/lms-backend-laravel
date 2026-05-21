@@ -8,6 +8,7 @@ import { publicService } from '../services/publicService';
 import { authService } from '../services/authService';
 import { tokenManager } from '../services/tokenManager';
 import { toast } from 'sonner';
+import { useAuth } from '../context/AuthContext';
 
 // ===== HOME PAGE QUERIES =====
 export const useHomeData = () => {
@@ -164,6 +165,7 @@ export const useReportOverview = () => {
     queryFn: () => adminService.getReportOverview(),
     staleTime: 30 * 1000, // Cache for 30 seconds
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
     retry: false, // Don't retry on 500 errors
   });
 };
@@ -194,6 +196,7 @@ export const useAuditLogs = () => {
     queryFn: () => adminService.getAuditLogs(),
     staleTime: 30 * 1000, // Cache for 30 seconds
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -213,6 +216,7 @@ export const useTransactions = (params = { limit: 10 }) => {
     queryFn: () => api.get('/admin/transactions', { params }).then(res => res.data?.data || res.data || []),
     staleTime: 30 * 1000, // Cache for 30 seconds
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -222,6 +226,7 @@ export const useBooks = (params = {}) => {
     queryFn: () => api.get('/books', { params }).then(res => res.data),
     staleTime: 30 * 1000, // Cache for 30 seconds
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -231,6 +236,7 @@ export const useEbooks = (params = {}) => {
     queryFn: () => api.get('/librarian/ebooks/all', { params: { limit: 1000, ...params } }).then(res => res.data),
     staleTime: 30 * 1000, // Cache for 30 seconds
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -240,6 +246,7 @@ export const useUsers = (params = {}) => {
     queryFn: () => api.get('/admin/users', { params }).then(res => res.data),
     staleTime: 30 * 1000, // Cache for 30 seconds
     refetchOnWindowFocus: true, // Refetch on focus to see updates
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -309,6 +316,7 @@ export const useLibraryFees = (params = {}) => {
     queryFn: () => librarianService.getLibraryFees(params),
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -316,7 +324,9 @@ export const useContactMessageStats = () => {
   return useQuery({
     queryKey: ['librarian', 'contact-messages', 'stats'],
     queryFn: () => librarianService.getContactMessageStats().then(res => res || { pending_count: 0 }),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -326,6 +336,7 @@ export const useAllTopups = (params = {}) => {
     queryFn: () => librarianService.getAllTopups(params),
     staleTime: 30 * 1000,
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -335,6 +346,7 @@ export const useLibrarianUsers = (params = {}) => {
     queryFn: () => librarianService.getUsers(params),
     staleTime: 30 * 1000, // Cache for 30 seconds
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -354,6 +366,7 @@ export const useLibrarianReservations = (params = {}) => {
     queryFn: () => librarianService.getReservations(params).then(res => res?.data || res || []),
     staleTime: 30 * 1000, // Cache for 30 seconds
     refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -371,7 +384,9 @@ export const useLibrarianBorrowStats = () => {
   return useQuery({
     queryKey: ['librarian', 'reports', 'borrow-stats'],
     queryFn: () => librarianService.getBorrowStats().then(res => res.data || res || {}),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -379,7 +394,9 @@ export const useLibrarianTopBooks = (params = {}) => {
   return useQuery({
     queryKey: ['librarian', 'reports', 'top-books', params],
     queryFn: () => librarianService.getTopBooks(params).then(res => res || []),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -387,7 +404,9 @@ export const useLibrarianCategoryStats = (params = {}) => {
   return useQuery({
     queryKey: ['librarian', 'reports', 'category-stats', params],
     queryFn: () => librarianService.getCategoryStats(params).then(res => res || []),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -395,7 +414,9 @@ export const useLibrarianReturnStats = (params = {}) => {
   return useQuery({
     queryKey: ['librarian', 'reports', 'return-stats', params],
     queryFn: () => librarianService.getReturnStats(params),
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30 * 1000,
   });
 };
 
@@ -549,6 +570,14 @@ export const invalidateRelatedCaches = (queryClient, patterns) => {
       // Convert array keys like ['librarian', 'borrows'] to path-like strings 'librarian/borrows'
       const apiPattern = Array.isArray(pattern) ? pattern.join('/') : pattern;
       api.clearCacheByPattern(apiPattern);
+      
+      // Auto-handle singular-plural mapping for resource endpoints (e.g. book/1 -> books/1)
+      if (apiPattern.startsWith('book/')) {
+        api.clearCacheByPattern(apiPattern.replace('book/', 'books/'));
+      }
+      if (apiPattern.startsWith('ebook/')) {
+        api.clearCacheByPattern(apiPattern.replace('ebook/', 'ebooks/'));
+      }
     }
   });
 };
@@ -556,10 +585,12 @@ export const invalidateRelatedCaches = (queryClient, patterns) => {
 // ===== BORROW/RESERVATION MUTATIONS =====
 export const useBorrowBook = () => {
   const queryClient = useQueryClient();
+  const { fetchUser } = useAuth();
   return useMutation({
     mutationFn: ({ bookId, days }) => catalogService.borrowBook(bookId, days),
     onSuccess: () => {
       toast.success('Mượn sách thành công!');
+      fetchUser().catch(() => {});
       invalidateRelatedCaches(queryClient, [
         ['librarian', 'borrows'],
         ['librarian', 'stats'],
@@ -580,10 +611,12 @@ export const useBorrowBook = () => {
 
 export const useReserveBook = () => {
   const queryClient = useQueryClient();
+  const { fetchUser } = useAuth();
   return useMutation({
     mutationFn: ({ bookId, days }) => catalogService.reserveBook(bookId, days),
     onSuccess: () => {
       toast.success('Đặt trước thành công!');
+      fetchUser().catch(() => {});
       invalidateRelatedCaches(queryClient, [
         ['librarian', 'borrows'],
         ['librarian', 'stats'],
@@ -604,6 +637,7 @@ export const useReserveBook = () => {
 
 export const usePurchaseEbook = () => {
   const queryClient = useQueryClient();
+  const { fetchUser } = useAuth();
   return useMutation({
     mutationFn: (id) => catalogService.purchaseEbook(id),
     onMutate: async (id) => {
@@ -614,6 +648,7 @@ export const usePurchaseEbook = () => {
     },
     onSuccess: (data, variables) => {
       toast.success('Mua ebook thành công!');
+      fetchUser().catch(() => {});
       invalidateRelatedCaches(queryClient, [
         ['ebook', variables],
         ['user', 'ebooks'],
@@ -639,10 +674,12 @@ export const usePurchaseEbook = () => {
 
 export const useReturnBook = () => {
   const queryClient = useQueryClient();
+  const { fetchUser } = useAuth();
   return useMutation({
     mutationFn: (borrowId) => api.post(`/return/${borrowId}`),
     onSuccess: () => {
       toast.success('Trả sách thành công!');
+      fetchUser().catch(() => {});
       invalidateRelatedCaches(queryClient, [
         ['librarian', 'borrows'],
         ['librarian', 'stats'],
@@ -663,10 +700,12 @@ export const useReturnBook = () => {
 
 export const useRenewBook = () => {
   const queryClient = useQueryClient();
+  const { fetchUser } = useAuth();
   return useMutation({
     mutationFn: ({ borrowId, days }) => api.post(`/borrow/${borrowId}/renew`, { days }),
     onSuccess: () => {
       toast.success('Gia hạn mượn sách thành công!');
+      fetchUser().catch(() => {});
       invalidateRelatedCaches(queryClient, [
         ['user', 'borrows'],
         ['librarian', 'borrows'],
@@ -684,10 +723,12 @@ export const useRenewBook = () => {
 
 export const useCancelReservation = () => {
   const queryClient = useQueryClient();
+  const { fetchUser } = useAuth();
   return useMutation({
     mutationFn: (id) => api.delete(`/reservation/${id}`),
     onSuccess: () => {
       toast.success('Hủy đặt trước thành công!');
+      fetchUser().catch(() => {});
       invalidateRelatedCaches(queryClient, [
         ['user', 'reservations'],
         ['librarian', 'reservations'],
@@ -815,22 +856,40 @@ export const useDeleteCopy = () => {
   });
 };
 
-// --- Book Settings (Hot/Featured/Carousel) ---
-export const useUpdateBookSettings = () => {
+// --- Display Management (Admin & Librarian) ---
+export const useDisplayItems = () => {
+  return useQuery({
+    queryKey: ['management', 'display-items'],
+    queryFn: () => api.get('/management/display-items').then(res => res.data),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+};
+
+export const useToggleDisplayItem = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data) => librarianService.updateBookSettings(data),
+    mutationFn: (data) => api.post('/management/display-items/toggle', data).then(res => res.data),
     onSuccess: () => {
-      toast.success('Cập nhật cài đặt hiển thị thành công!');
-      invalidateRelatedCaches(queryClient, [
-        'books',
-        'book',
-        'home',
-        'librarian',
-      ]);
+      toast.success('Cập nhật trạng thái hiển thị thành công!');
+      invalidateRelatedCaches(queryClient, ['management', 'books', 'home']);
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Không thể cập nhật cài đặt');
+      toast.error(err.response?.data?.message || 'Không thể cập nhật trạng thái');
+    },
+  });
+};
+
+export const useReorderDisplayItems = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => api.post('/management/display-items/reorder', data).then(res => res.data),
+    onSuccess: () => {
+      toast.success('Cập nhật thứ tự thành công!');
+      invalidateRelatedCaches(queryClient, ['management', 'books', 'home']);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Không thể cập nhật thứ tự');
     },
   });
 };
@@ -931,27 +990,6 @@ export const useForceDeleteEbook = () => {
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Không thể xóa vĩnh viễn ebook');
-    },
-  });
-};
-
-// --- Ebook Settings (Hot/Featured/Carousel) ---
-export const useUpdateEbookSettings = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data) => api.post('/librarian/settings/ebooks/hot', data),
-    onSuccess: () => {
-      toast.success('Cập nhật cài đặt hiển thị ebook thành công!');
-      invalidateRelatedCaches(queryClient, [
-        'ebooks',
-        'ebook',
-        'home',
-        'admin',
-        'librarian',
-      ]);
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Không thể cập nhật cài đặt');
     },
   });
 };

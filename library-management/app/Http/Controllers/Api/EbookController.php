@@ -39,13 +39,7 @@ class EbookController extends Controller
 
             // Filter by keyword
             if ($request->has('keyword')) {
-                $keyword = $request->keyword;
-                $query->where(function ($q) use ($keyword) {
-                    $q->where('title', 'like', "%{$keyword}%")
-                      ->orWhereHas('author', function ($q) use ($keyword) {
-                          $q->where('name', 'like', "%{$keyword}%");
-                      });
-                });
+                $query->search($request->keyword);
             }
 
             // Filter by price
@@ -158,11 +152,7 @@ class EbookController extends Controller
 
             // Filter by keyword
             if ($request->has('keyword')) {
-                $keyword = $request->keyword;
-                $query->where(function ($q) use ($keyword) {
-                    $q->where('title', 'like', "%{$keyword}%")
-                      ->orWhere('author_name', 'like', "%{$keyword}%");
-                });
+                $query->search($request->keyword);
             }
 
             // Filter by category

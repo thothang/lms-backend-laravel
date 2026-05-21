@@ -1,23 +1,57 @@
 import React, { useState } from 'react';
 import { Search, Filter, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLibrarianReservations, useConfirmReservation } from '../../hooks/queries';
 import { handleApiError } from '../../utils/toastHelper';
 import DetailModal from '../../components/ui/DetailModal';
+import Pagination from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
+import api from '../../services/api';
 
 const ManageReservations = () => {
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState('all'); // all, pending, fulfilled, cancelled
   const [processingId, setProcessingId] = useState(null);
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [showReservationModal, setShowReservationModal] = useState(false);
 
-  const { data: rawReservations, isLoading } = useLibrarianReservations({
-    limit: 100,
+  // Pagination
+  const { 
+    currentPage, 
+    perPage, 
+    setCurrentPage, 
+    resetPage 
+  } = usePagination({ defaultPage: 1, defaultPerPage: 10 });
+
+  // Reset page when filter changes
+  React.useEffect(() => {
+    resetPage();
+  }, [filter, resetPage]);
+
+  const queryParams = {
+    page: currentPage,
+    limit: perPage,
     ...(filter !== 'all' ? { status: filter } : {}),
-  });
+  };
+
+  const { data: rawReservations, isLoading } = useLibrarianReservations(queryParams);
 
   // Ensure reservations is always an array
   const reservations = Array.isArray(rawReservations) ? rawReservations : (rawReservations?.data || []);
+  const totalItems = rawReservations?.total || 0;
+  const totalPages = Math.ceil(totalItems / perPage);
+
+  // Prefetch next page
+  React.useEffect(() => {
+    if (currentPage < totalPages) {
+      const nextParams = { ...queryParams, page: currentPage + 1 };
+      queryClient.prefetchQuery({
+        queryKey: ['librarian', 'reservations', nextParams],
+        queryFn: () => api.get('/librarian/reservations', { params: nextParams }).then(res => res.data)
+      });
+    }
+  }, [currentPage, totalPages, queryParams, queryClient]);
 
   const confirmReservation = useConfirmReservation();
 
@@ -135,6 +169,20 @@ const ManageReservations = () => {
             </table>
           )}
         </div>
+
+        {/* Pagination */}
+        {!isLoading && reservations.length > 0 && (
+          <div className="mt-6 border-t border-slate-100 pt-6">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              perPage={perPage}
+              onPageChange={setCurrentPage}
+              isLoading={isLoading}
+            />
+          </div>
+        )}
       </div>
 
       {/* Reservation Detail Modal */}

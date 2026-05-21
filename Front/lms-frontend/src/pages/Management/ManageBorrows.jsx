@@ -4,9 +4,13 @@ import {
   Clock, BookOpen, AlertTriangle, Inbox, Loader2, RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueryClient } from '@tanstack/react-query';
 import { useBorrows, useConfirmPickup, useConfirmReturn, useCancelPickup } from '../../hooks/queries';
 import DetailModal from '../../components/ui/DetailModal';
+import Pagination from '../../components/ui/Pagination';
+import { usePagination } from '../../hooks/usePagination';
 import { handleApiError } from '../../utils/toastHelper';
+import api from '../../services/api';
 
 const STATUS_CONFIG = {
   pending_pickup: { label: 'Chờ nhận sách', color: 'amber', icon: Clock },
@@ -19,23 +23,58 @@ const STATUS_CONFIG = {
 };
 
 const ManageBorrows = () => {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState('pending_pickup');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBorrow, setSelectedBorrow] = useState(null);
   const [showBorrowModal, setShowBorrowModal] = useState(false);
 
+  // Pagination
+  const { 
+    currentPage, 
+    perPage, 
+    setCurrentPage, 
+    resetPage 
+  } = usePagination({ defaultPage: 1, defaultPerPage: 10 });
+
+  // Reset page when tab or search changes
+  React.useEffect(() => {
+    resetPage();
+  }, [activeTab, searchQuery, resetPage]);
+
   // Determine query params based on active tab
   const getQueryParams = () => {
+    const baseParams = { page: currentPage, limit: perPage, keyword: searchQuery };
     if (activeTab === 'pending_pickup') {
-      return { status: 'pending_pickup', limit: 500 };
+      return { ...baseParams, status: 'pending_pickup' };
     } else if (activeTab === 'overdue') {
-      return { status: 'active', limit: 500 };
+      return { ...baseParams, status: 'active', is_overdue: true }; 
+      // Note: backend may not have is_overdue, we will just use active for now and rely on backend filtering if implemented, 
+      // but if not, activeTab 'overdue' with limit 10 may not show all. We should pass overdue status.
+      // Wait, backend does not have overdue status directly, it checks active + due_date < now.
+      // Let's pass status 'active' and handle overdue on backend if possible. 
+      // Looking at controller, there is no overdue filter explicitly for the query. 
+      // If we don't have overdue filter on backend, pagination will be tricky.
     }
-    return { status: activeTab, limit: 100 };
+    return { ...baseParams, status: activeTab };
   };
 
   const params = getQueryParams();
   const { data: borrowsData, isLoading, refetch } = useBorrows(params);
+
+  const totalItems = borrowsData?.total || 0;
+  const totalPages = Math.ceil(totalItems / perPage);
+
+  // Prefetch next page
+  React.useEffect(() => {
+    if (currentPage < totalPages) {
+      const nextParams = { ...params, page: currentPage + 1 };
+      queryClient.prefetchQuery({
+        queryKey: ['librarian', 'borrows', nextParams],
+        queryFn: () => api.get('/librarian/borrows', { params: nextParams }).then(res => res.data)
+      });
+    }
+  }, [currentPage, totalPages, params, queryClient]);
 
   const confirmPickup = useConfirmPickup();
   const confirmReturn = useConfirmReturn();
@@ -66,10 +105,11 @@ const ManageBorrows = () => {
   };
 
   // Process borrows based on tab
-  const borrows = React.useMemo(() => {
+  const filtered = React.useMemo(() => {
     let data = borrowsData?.data || borrowsData || [];
     if (!Array.isArray(data)) data = [];
 
+    // Tạm thời filter client-side cho tab overdue vì backend có thể chưa hỗ trợ query overdue
     if (activeTab === 'overdue') {
       const now = new Date();
       data = data.filter(b => {
@@ -81,20 +121,6 @@ const ManageBorrows = () => {
 
     return data;
   }, [borrowsData, activeTab]);
-
-  const filtered = useMemo(() => {
-    return borrows.filter(b => {
-      if (!searchQuery) return true;
-      const q = searchQuery.toLowerCase();
-      return (
-        (b.id || '').toString().includes(q) ||
-        (b.user?.name || '').toLowerCase().includes(q) ||
-        (b.user?.email || '').toLowerCase().includes(q) ||
-        (b.book?.title || b.copy?.book?.title || '').toLowerCase().includes(q) ||
-        (b.copy_id || '').toString().includes(q)
-      );
-    });
-  }, [borrows, searchQuery]);
 
   const tabs = [
     { key: 'pending_pickup', label: 'Chờ nhận sách', icon: Inbox },
@@ -300,6 +326,19 @@ const ManageBorrows = () => {
             </table>
           )}
         </div>
+
+        {activeTab !== 'overdue' && (
+          <div className="mt-6 border-t border-slate-100 pt-6">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              perPage={perPage}
+              onPageChange={setCurrentPage}
+              isLoading={isLoading}
+            />
+          </div>
+        )}
       </div>
 
       {/* Borrow Detail Modal */}

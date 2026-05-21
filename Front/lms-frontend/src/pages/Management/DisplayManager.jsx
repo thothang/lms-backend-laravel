@@ -2,51 +2,30 @@ import React from 'react';
 import { Flame, Award, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { useBooks, useEbooks, useUpdateBookSettings, useUpdateEbookSettings } from '../../hooks/queries';
+import { useDisplayItems } from '../../hooks/queries';
 import { handleApiError, showSuccess } from '../../utils/toastHelper';
 import BookDisplayManager from '../../components/management/BookDisplayManager';
+import { useAuth } from '../../context/AuthContext';
 
 /**
- * AdminHotFeaturedManager - Trang quản lý sách Hot, Nổi bật và Carousel cho Admin
+ * DisplayManager - Trang quản lý sách Hot, Nổi bật và Carousel cho Admin và Librarian
  */
-const AdminHotFeaturedManager = () => {
+const DisplayManager = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Fetch only active display items
+  const { data: displayData, isLoading } = useDisplayItems();
 
-  // Fetch all books and ebooks
-  const { data: booksData, isLoading: booksLoading } = useBooks({ limit: 1000 });
-  const { data: ebooksData, isLoading: ebooksLoading } = useEbooks({ limit: 1000 });
-
-  // Mutations
-  const updateBookSettingsMutation = useUpdateBookSettings();
-  const updateEbookSettingsMutation = useUpdateEbookSettings();
-
-  const books = Array.isArray(booksData) ? booksData : (booksData?.data || []);
-  const ebooks = Array.isArray(ebooksData) ? ebooksData : (ebooksData?.data || []);
-
-  const handleUpdateBook = async (id, settings) => {
-    try {
-      await updateBookSettingsMutation.mutateAsync({ book_id: id, ...settings });
-      showSuccess('Đã cập nhật hiển thị sách!');
-    } catch (err) {
-      handleApiError(err, 'Không thể cập nhật sách');
-    }
-  };
-
-  const handleUpdateEbook = async (id, settings) => {
-    try {
-      await updateEbookSettingsMutation.mutateAsync({ ebook_id: id, ...settings });
-      showSuccess('Đã cập nhật hiển thị ebook!');
-    } catch (err) {
-      handleApiError(err, 'Không thể cập nhật ebook');
-    }
-  };
+  const books = Array.isArray(displayData?.books) ? displayData.books : [];
+  const ebooks = Array.isArray(displayData?.ebooks) ? displayData.ebooks : [];
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate('/admin')}
+          onClick={() => navigate(`/${user?.role || 'admin'}`)}
           className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-500"
         >
           <ArrowLeft size={20} />
@@ -124,7 +103,7 @@ const AdminHotFeaturedManager = () => {
       </div>
 
       {/* Book Display Manager */}
-      {booksLoading || ebooksLoading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
         </div>
@@ -132,13 +111,10 @@ const AdminHotFeaturedManager = () => {
         <BookDisplayManager
           books={books}
           ebooks={ebooks}
-          type="both"
-          onUpdateBook={handleUpdateBook}
-          onUpdateEbook={handleUpdateEbook}
         />
       )}
     </div>
   );
 };
 
-export default AdminHotFeaturedManager;
+export default DisplayManager;
