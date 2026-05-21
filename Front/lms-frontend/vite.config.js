@@ -8,12 +8,14 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    /* VitePWA({
+    VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       workbox: {
         navigateFallbackDenylist: [/^\/api/],
         cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
       },
       manifest: {
         name: 'LMS - Quản Lý Thư Viện',
@@ -37,7 +39,7 @@ export default defineConfig({
           }
         ]
       }
-    }) */
+    })
   ],
   build: {
     rollupOptions: {

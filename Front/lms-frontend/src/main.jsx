@@ -16,13 +16,7 @@ const queryClient = new QueryClient({
   },
 })
 
-// Force unregister stale service workers to fix 404 caching issues
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    registrations.forEach(reg => reg.unregister());
-  });
-  caches.keys().then(names => names.forEach(name => caches.delete(name)));
-}
+// PWA Service worker is managed by vite-plugin-pwa
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
