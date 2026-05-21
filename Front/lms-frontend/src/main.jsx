@@ -16,8 +16,8 @@ const queryClient = new QueryClient({
   },
 })
 
-// Unregister stale service workers in dev mode
-if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+// Force unregister stale service workers to fix 404 caching issues
+if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(registrations => {
     registrations.forEach(reg => reg.unregister());
   });
