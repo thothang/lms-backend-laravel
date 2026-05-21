@@ -66,7 +66,9 @@ const BookDisplayManager = ({ books = [], ebooks = [] }) => {
     const results = [...booksResults, ...ebooksResults];
     
     return results.filter(i => {
-      const type = i.is_ebook ? 'ebook' : 'book';
+      const type = i.search_type || (i.is_ebook ? 'ebook' : 'book');
+      
+      // If it's already active and we're looking at that tab, don't show it in search
       const existing = allActiveItems.find(active => active.id === i.id && active.itemType === type);
       
       if (!existing) return true; // not in any list yet
@@ -77,7 +79,7 @@ const BookDisplayManager = ({ books = [], ebooks = [] }) => {
       return false;
     }).map(i => ({
       ...i,
-      itemType: i.is_ebook ? 'ebook' : 'book'
+      itemType: i.search_type || (i.is_ebook ? 'ebook' : 'book')
     })).slice(0, 10);
   }, [debouncedSearch, searchResultsData, allActiveItems, activeTab]);
 
