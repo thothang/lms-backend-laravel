@@ -10,6 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      filename: 'pwa-sw.js',
       includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       workbox: {
         navigateFallbackDenylist: [/^\/api/],
