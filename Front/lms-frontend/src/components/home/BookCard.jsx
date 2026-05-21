@@ -33,6 +33,10 @@ const BookCard = ({ book }) => {
           alt={book.title}
           className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
           loading="lazy"
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = 'https://placehold.co/400x600/1e293b/94a3b8?text=Image+Error';
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4">
           <Link to={`/book/${bookType}/${book.id}`} className="bg-white text-slate-900 px-5 py-2 rounded-full font-bold text-sm flex items-center gap-2 hover:scale-105 transition-transform shadow-xl">

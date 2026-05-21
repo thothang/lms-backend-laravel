@@ -282,7 +282,7 @@ const Navbar = () => {
                               navigate(`/catalog?keyword=${encodeURIComponent(book.title)}`);
                             }}
                           >
-                            <img src={book.cover_image || 'https://placehold.co/100x150/1e293b/94a3b8?text=Book'} alt={book.title} className="w-10 h-14 object-cover rounded shadow-sm shrink-0" />
+                            <img src={book.cover_image || 'https://placehold.co/100x150/1e293b/94a3b8?text=Book'} alt={book.title} className="w-10 h-14 object-cover rounded shadow-sm shrink-0" onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/100x150/1e293b/94a3b8?text=Error'; }} />
                             <div className="flex-1 overflow-hidden">
                               <h4 className="text-sm font-semibold text-slate-800 line-clamp-1">{book.title}</h4>
                               <p className="text-xs text-slate-500 truncate">{book.uploaded_by_admin ? (book.author_name || 'Đang cập nhật') : (book.author?.name || book.author_name || book.author || 'Đang cập nhật')}</p>
@@ -530,7 +530,7 @@ const Navbar = () => {
                             navigate(`/catalog?keyword=${encodeURIComponent(book.title)}`);
                           }}
                         >
-                          <img src={book.cover_image || 'https://placehold.co/100x150/1e293b/94a3b8?text=Book'} alt={book.title} className="w-10 h-14 object-cover rounded shadow-sm shrink-0" />
+                          <img src={book.cover_image || 'https://placehold.co/100x150/1e293b/94a3b8?text=Book'} alt={book.title} className="w-10 h-14 object-cover rounded shadow-sm shrink-0" onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/100x150/1e293b/94a3b8?text=Error'; }} />
                           <div className="flex-1 overflow-hidden">
                             <h4 className="text-sm font-semibold text-slate-800 line-clamp-1">{book.title}</h4>
                             <p className="text-xs text-slate-500 truncate">{book.uploaded_by_admin ? (book.author_name || 'Đang cập nhật') : (book.author?.name || book.author_name || book.author || 'Đang cập nhật')}</p>
