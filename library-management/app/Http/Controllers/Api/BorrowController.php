@@ -310,8 +310,19 @@ class BorrowController extends Controller
         return $this->withApiExceptionHandling(function () use ($request, $bookId) {
             $request->validate([
                 'rating' => 'required|integer|min:1|max:5',
-                'comment' => 'nullable|string|max:1000',
+                'comment' => 'required|string|max:2000',
             ]);
+
+            if (str_word_count(strip_tags($request->comment)) < 60) {
+                return response()->json(['error' => 'Nội dung đánh giá phải dài trên 60 từ.'], 422);
+            }
+
+            $badWords = ['đụ', 'đĩ', 'lồn', 'cặc', 'ngu', 'chó', 'lừa đảo', 'chửi thề']; // Basic ethical check
+            foreach ($badWords as $word) {
+                if (stripos($request->comment, $word) !== false) {
+                    return response()->json(['error' => 'Nội dung đánh giá vi phạm quy chuẩn đạo đức hoặc tiêu cực.'], 422);
+                }
+            }
 
             $user = JWTAuth::parseToken()->authenticate();
 
@@ -346,6 +357,9 @@ class BorrowController extends Controller
                 'comment' => $request->comment,
             ]);
 
+            $rankingService = app(\App\Services\RankingService::class);
+            $rankingService->addPoints($user, 5, 'wrote_review', $review);
+
             // Clear book cache to reflect new review immediately
             Cache::forget("books.show.{$bookId}");
 
@@ -377,8 +391,19 @@ class BorrowController extends Controller
         return $this->withApiExceptionHandling(function () use ($request, $ebookId) {
             $request->validate([
                 'rating' => 'required|integer|min:1|max:5',
-                'comment' => 'nullable|string|max:1000',
+                'comment' => 'required|string|max:2000',
             ]);
+
+            if (str_word_count(strip_tags($request->comment)) < 60) {
+                return response()->json(['error' => 'Nội dung đánh giá phải dài trên 60 từ.'], 422);
+            }
+
+            $badWords = ['đụ', 'đĩ', 'lồn', 'cặc', 'ngu', 'chó', 'lừa đảo', 'chửi thề']; // Basic ethical check
+            foreach ($badWords as $word) {
+                if (stripos($request->comment, $word) !== false) {
+                    return response()->json(['error' => 'Nội dung đánh giá vi phạm quy chuẩn đạo đức hoặc tiêu cực.'], 422);
+                }
+            }
 
             $user = JWTAuth::parseToken()->authenticate();
 
@@ -410,6 +435,9 @@ class BorrowController extends Controller
                 'rating' => $request->rating,
                 'comment' => $request->comment,
             ]);
+
+            $rankingService = app(\App\Services\RankingService::class);
+            $rankingService->addPoints($user, 5, 'wrote_review', $review);
 
             // Clear ebook cache to reflect new review immediately
             Cache::forget("ebooks.show.{$ebookId}");

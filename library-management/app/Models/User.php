@@ -141,9 +141,7 @@ class User extends Authenticatable implements JWTSubject
     public function addBalance(float $amount): void
     {
         DB::transaction(function () use ($amount) {
-            User::where('id', $this->id)->lockForUpdate()->update([
-                'balance' => DB::raw('balance + ' . $amount)
-            ]);
+            User::where('id', $this->id)->lockForUpdate()->increment('balance', $amount);
         });
     }
 
@@ -165,10 +163,9 @@ class User extends Authenticatable implements JWTSubject
     public function addEarnings(float $amount): void
     {
         DB::transaction(function () use ($amount) {
-            User::where('id', $this->id)->lockForUpdate()->update([
-                'earnings_balance' => DB::raw('earnings_balance + ' . $amount),
-                'total_earned' => DB::raw('total_earned + ' . $amount)
-            ]);
+            $userQuery = User::where('id', $this->id)->lockForUpdate();
+            $userQuery->increment('earnings_balance', $amount);
+            $userQuery->increment('total_earned', $amount);
         });
     }
 
@@ -190,9 +187,7 @@ class User extends Authenticatable implements JWTSubject
     public function addDebt(float $amount): void
     {
         DB::transaction(function () use ($amount) {
-            User::where('id', $this->id)->lockForUpdate()->update([
-                'total_debt' => DB::raw('total_debt + ' . $amount)
-            ]);
+            User::where('id', $this->id)->lockForUpdate()->increment('total_debt', $amount);
         });
     }
 

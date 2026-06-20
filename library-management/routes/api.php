@@ -85,6 +85,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/refresh-token', [AuthController::class, 'refresh']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'me']);
+    Route::get('/profile/ranking', [AuthController::class, 'ranking']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::get('/balance', [AuthController::class, 'balance']);
@@ -162,6 +163,12 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/ebooks/pending', [\App\Http\Controllers\Api\Admin\EbookController::class, 'pendingEbooks']);
         Route::post('/ebooks/{id}/approve', [\App\Http\Controllers\Api\Admin\EbookController::class, 'approveEbook']);
         Route::post('/ebooks/{id}/reject', [\App\Http\Controllers\Api\Admin\EbookController::class, 'rejectEbook']);
+
+        // Promotions
+        Route::get('/promotions', [\App\Http\Controllers\Api\Admin\PromotionController::class, 'index']);
+        Route::post('/promotions', [\App\Http\Controllers\Api\Admin\PromotionController::class, 'store']);
+        Route::put('/promotions/{id}', [\App\Http\Controllers\Api\Admin\PromotionController::class, 'update']);
+        Route::delete('/promotions/{id}', [\App\Http\Controllers\Api\Admin\PromotionController::class, 'destroy']);
     });
 
 

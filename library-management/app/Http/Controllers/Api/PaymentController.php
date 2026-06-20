@@ -314,6 +314,13 @@ class PaymentController extends Controller
         $user->increment('balance', $amount);
         $user->refresh();
 
+        // Calculate and add reward points
+        $points = (int) floor($amount / 10000) * 5;
+        if ($points > 0) {
+            $rankingService = app(\App\Services\RankingService::class);
+            $rankingService->addPoints($user, $points, 'topup');
+        }
+
         // Log transaction
         $this->logTransaction($userId, 'topup', $amount, $data);
 
@@ -565,6 +572,13 @@ class PaymentController extends Controller
                 $user->balance = $user->balance + $amount;
                 $user->save();
                 $user->refresh();
+
+                // Calculate and add reward points
+                $points = (int) floor($amount / 10000) * 5;
+                if ($points > 0) {
+                    $rankingService = app(\App\Services\RankingService::class);
+                    $rankingService->addPoints($user, $points, 'topup');
+                }
 
                 // Check if there's a PENDING transaction for this user and amount (within 10 minutes)
                 $pendingTransaction = PaymentTransaction::where('user_id', $user->id)

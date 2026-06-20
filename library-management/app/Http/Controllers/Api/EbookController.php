@@ -535,16 +535,19 @@ class EbookController extends Controller
                 ], 422);
             }
 
+            $discountInfo = $ebook->discount_info;
+            $finalPrice = $discountInfo ? $discountInfo['discounted_price'] : $ebook->price;
+
             // Check balance for non-free ebooks
             if (!$ebook->is_free) {
-                if ($user->balance < $ebook->price) {
+                if ($user->balance < $finalPrice) {
                     return response()->json([
                         'error' => 'Số dư không đủ',
                     ], 422);
                 }
 
                 // Deduct from balance
-                $user->subtractBalance($ebook->price);
+                $user->subtractBalance($finalPrice);
             }
 
             // Create purchase record
@@ -552,13 +555,13 @@ class EbookController extends Controller
                 'user_id' => $user->id,
                 'ebook_id' => $ebook->id,
                 'purchase_date' => now(),
-                'amount' => $ebook->is_free ? 0 : $ebook->price,
+                'amount' => $ebook->is_free ? 0 : $finalPrice,
             ]);
 
             // Create transaction record
             $transaction = \App\Models\Transaction::create([
                 'user_id' => $user->id,
-                'amount' => $ebook->is_free ? 0 : $ebook->price,
+                'amount' => $ebook->is_free ? 0 : $finalPrice,
                 'type' => 'ebook_purchase',
                 'status' => 'success',
                 'payment_gateway' => 'balance',
@@ -568,48 +571,66 @@ class EbookController extends Controller
                     'author_id' => $ebook->author_id,
                     'author_name' => $ebook->author_name,
                     'uploaded_by_admin' => $ebook->uploaded_by_admin,
-                    'price' => $ebook->price,
+                    'price' => $finalPrice,
+                    'original_price' => $ebook->price,
+                    'promotion_name' => $discountInfo['promotion_name'] ?? null,
                 ],
             ]);
+
+            // --- RANKING POINTS ---
+            $rankingService = app(\App\Services\RankingService::class);
+            if ($finalPrice > 0) {
+                // 10 points for every 10,000 VND
+                $points = (int) floor($finalPrice / 10000) * 10;
+                if ($points > 0) {
+                    $rankingService->addPoints($user, $points, 'bought_ebook', $purchase);
+                }
+            }
 
             // Revenue distribution logic:
             // - If uploaded_by_admin = true (admin/thủ thư uploaded) -> 100% revenue goes to admin
             // - If uploaded_by_admin = false (author uploaded) -> author gets 60%, admin gets 40%
             $admin = User::where('role', 'admin')->first();
+            $revenueAmount = $ebook->is_free ? 0 : $finalPrice;
 
             if ($ebook->uploaded_by_admin) {
                 // Admin/librarian uploaded ebook: 100% goes to admin
                 // Author info is stored in author_name field (not a user account)
-                if ($admin) {
-                    $admin->addEarnings($ebook->price); // Full price goes to admin (adds to both earnings_balance and total_earned)
+                if ($admin && $revenueAmount > 0) {
+                    $admin->addEarnings($revenueAmount); // Full price goes to admin (adds to both earnings_balance and total_earned)
 
                     // Notify admin
                     Notification::create([
                         'user_id' => $admin->id,
                         'title' => 'Có người mua ebook của thư viện',
-                        'content' => "Ebook '{$ebook->title}' (Tác giả: {$ebook->author_name}) đã được mua bởi {$user->name}. Doanh thu " . number_format($ebook->price) . " VNĐ đã được cộng vào tài khoản thư viện.",
+                        'content' => "Ebook '{$ebook->title}' (Tác giả: {$ebook->author_name}) đã được mua bởi {$user->name}. Doanh thu " . number_format($revenueAmount) . " VNĐ đã được cộng vào tài khoản thư viện.",
                         'type' => Notification::TYPE_WEB,
                     ]);
                 }
             } else {
                 // Author uploaded ebook: author gets 60%, admin gets 40%
                 $author = $ebook->author;
-                $authorEarnings = $ebook->getAuthorEarnings();
-                $libraryFee = $ebook->price - $authorEarnings; // 40%
+                $percent = config('library.ebook_author_revenue_percent', 60);
+                $authorEarnings = ($revenueAmount * $percent) / 100;
+                $libraryFee = $revenueAmount - $authorEarnings; // 40%
 
-                $author->addEarnings($authorEarnings); // Adds to both earnings_balance and total_earned
+                if ($authorEarnings > 0) {
+                    $author->addEarnings($authorEarnings); // Adds to both earnings_balance and total_earned
+                }
 
-                if ($admin) {
+                if ($admin && $libraryFee > 0) {
                     $admin->addEarnings($libraryFee); // Adds to both earnings_balance and total_earned
                 }
 
                 // Notify author
-                Notification::create([
-                    'user_id' => $ebook->author_id,
-                    'title' => 'Có người mua ebook của bạn',
-                    'content' => "Ebook '{$ebook->title}' đã được mua bởi {$user->name}. Bạn nhận được " . number_format($authorEarnings) . " VNĐ.",
-                    'type' => Notification::TYPE_WEB,
-                ]);
+                if ($authorEarnings > 0) {
+                    Notification::create([
+                        'user_id' => $ebook->author_id,
+                        'title' => 'Có người mua ebook của bạn',
+                        'content' => "Ebook '{$ebook->title}' đã được mua bởi {$user->name}. Bạn nhận được " . number_format($authorEarnings) . " VNĐ.",
+                        'type' => Notification::TYPE_WEB,
+                    ]);
+                }
             }
 
             // Notify user about successful purchase

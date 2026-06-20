@@ -84,15 +84,19 @@ class LibrarianController extends Controller
                     'available_copies' => 0,
                 ]);
 
-                // Create copies with barcodes
+                // Create copies with barcodes efficiently using insert
                 $copies = [];
+                $now = now();
                 for ($i = 1; $i <= $request->copies; $i++) {
-                    $copies[] = BookCopy::create([
+                    $copies[] = [
                         'book_id' => $book->id,
                         'barcode' => 'BK' . $book->id . '-' . str_pad($i, 4, '0', STR_PAD_LEFT),
                         'status' => 'available',
-                    ]);
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
                 }
+                BookCopy::insert($copies);
 
                 $book->update([
                     'total_copies' => count($copies),
@@ -288,14 +292,18 @@ class LibrarianController extends Controller
 
             $existingCopiesCount = $book->copies()->count();
             $newCopies = [];
+            $now = now();
 
             for ($i = 1; $i <= $request->quantity; $i++) {
-                $newCopies[] = BookCopy::create([
+                $newCopies[] = [
                     'book_id' => $book->id,
                     'barcode' => 'BK' . $book->id . '-' . str_pad($existingCopiesCount + $i, 4, '0', STR_PAD_LEFT),
                     'status' => 'available',
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
             }
+            BookCopy::insert($newCopies);
 
             $book->updateAvailableCopies();
 
@@ -546,6 +554,10 @@ class LibrarianController extends Controller
                 if ($borrowRecord->user_id) {
                     $user = $borrowRecord->user;
 
+                    // --- RANKING PENALTY ---
+                    $rankingService = app(\App\Services\RankingService::class);
+                    $rankingService->deductPoints($user, 50, 'lost_book_damage', $borrowRecord);
+
                     if ($user->balance >= $compensationAmount) {
                         $user->subtractBalance($compensationAmount);
                         $balanceDeducted = $compensationAmount;
@@ -614,34 +626,37 @@ class LibrarianController extends Controller
                     ->get();
 
                 if ($pendingReservations->count() > $book->available_copies && $book->available_copies >= 0) {
-                $lastReservation = $pendingReservations->first();
+                    $excessCount = $pendingReservations->count() - $book->available_copies;
+                    $reservationsToCancel = $pendingReservations->take($excessCount);
 
-                // Refund the user
-                $userToRefund = $lastReservation->user;
-                if ($userToRefund) {
-                    $userToRefund->addBalance($lastReservation->fee_paid);
+                    foreach ($reservationsToCancel as $reservation) {
+                        // Refund the user
+                        $userToRefund = $reservation->user;
+                        if ($userToRefund) {
+                            $userToRefund->addBalance($reservation->fee_paid);
 
-                    Transaction::create([
-                        'user_id' => $userToRefund->id,
-                        'amount' => $lastReservation->fee_paid,
-                        'type' => 'deposit',
-                        'status' => 'success',
-                        'metadata' => [
-                            'reservation_id' => $lastReservation->id,
-                            'reason' => 'book_lost_queue_cancelled',
-                        ],
-                    ]);
+                            Transaction::create([
+                                'user_id' => $userToRefund->id,
+                                'amount' => $reservation->fee_paid,
+                                'type' => 'deposit',
+                                'status' => 'success',
+                                'metadata' => [
+                                    'reservation_id' => $reservation->id,
+                                    'reason' => 'book_lost_queue_cancelled',
+                                ],
+                            ]);
 
-                    Notification::create([
-                        'user_id' => $userToRefund->id,
-                        'title' => 'Thông báo hủy đặt trước',
-                        'content' => "Sách '{$book->title}' bạn đang chờ đã bị báo mất/hỏng. Chúng tôi rất tiếc phải hủy yêu cầu của bạn và hoàn lại phí đặt trước.",
-                        'type' => 'web',
-                    ]);
+                            Notification::create([
+                                'user_id' => $userToRefund->id,
+                                'title' => 'Thông báo hủy đặt trước',
+                                'content' => "Sách '{$book->title}' bạn đang chờ đã bị báo mất/hỏng. Chúng tôi rất tiếc phải hủy yêu cầu của bạn và hoàn lại phí đặt trước.",
+                                'type' => 'web',
+                            ]);
+                        }
+
+                        $reservation->update(['status' => 'cancelled']);
+                    }
                 }
-
-                $lastReservation->update(['status' => 'cancelled']);
-            }
 
             // Log action
             AuditLog::log(
@@ -1010,15 +1025,19 @@ class LibrarianController extends Controller
      */
     private function reorderBookCarousel(): void
     {
-        $carouselBooks = Book::where('in_carousel', true)
-            ->orderBy('carousel_order')
-            ->get();
+        DB::transaction(function () {
+            $carouselBooks = Book::where('in_carousel', true)
+                ->orderBy('carousel_order')
+                ->get();
 
-        $order = 1;
-        foreach ($carouselBooks as $book) {
-            $book->update(['carousel_order' => $order]);
-            $order++;
-        }
+            $order = 1;
+            foreach ($carouselBooks as $book) {
+                if ($book->carousel_order !== $order) {
+                    $book->update(['carousel_order' => $order]);
+                }
+                $order++;
+            }
+        });
     }
 
     /**
@@ -1138,18 +1157,21 @@ class LibrarianController extends Controller
         return $this->withApiExceptionHandling(function () use ($request) {
             $query = User::query();
 
+            // Exclude admins for librarian view
+            $query->where('role', '!=', 'admin');
+
             // Filter by role
-            if ($request->has('role')) {
+            if ($request->filled('role')) {
                 $query->where('role', $request->role);
             }
 
             // Filter by status
-            if ($request->has('status')) {
+            if ($request->filled('status')) {
                 $query->where('status', $request->status);
             }
 
             // Filter by keyword
-            if ($request->has('keyword')) {
+            if ($request->filled('keyword')) {
                 $keyword = $request->keyword;
                 $query->where(function ($q) use ($keyword) {
                     $q->where('name', 'like', "%{$keyword}%")

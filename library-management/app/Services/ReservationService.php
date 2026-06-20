@@ -164,7 +164,7 @@ class ReservationService
         return DB::transaction(function () use ($user, $reservationId) {
             $reservation = Reservation::where('id', $reservationId)
                 ->where('user_id', $user->id)
-                ->where('status', 'pending')
+                ->whereIn('status', ['pending', 'fulfilled'])
                 ->first();
 
             if (!$reservation) {
@@ -174,6 +174,7 @@ class ReservationService
                 ];
             }
 
+            $wasFulfilled = $reservation->status === 'fulfilled';
             $reservation->update(['status' => 'cancelled']);
 
             // Refund fee to user
@@ -200,6 +201,26 @@ class ReservationService
                     'content' => "Đặt trước sách '{$book->title}' đã bị hủy. Phí đặt trước " . number_format($reservation->fee_paid) . " VNĐ đã được hoàn vào tài khoản.",
                     'type' => Notification::TYPE_WEB,
                 ]);
+            }
+
+            if ($wasFulfilled) {
+                // Apply -5 points penalty
+                $rankingService = app(\App\Services\RankingService::class);
+                $rankingService->deductPoints($user, 5, 'cancelled_fulfilled_reservation', $reservation);
+
+                // Make the reserved copy available again
+                if ($reservation->copy_id) {
+                    $copy = \App\Models\BookCopy::find($reservation->copy_id);
+                    if ($copy) {
+                        $copy->update(['status' => 'available']);
+                        if ($book) {
+                            $book->updateAvailableCopies();
+                            // Process queue for next person
+                            $borrowService = app(\App\Services\BorrowService::class);
+                            $borrowService->processReservationQueue($book);
+                        }
+                    }
+                }
             }
 
             // Log action

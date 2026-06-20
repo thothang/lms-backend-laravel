@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Ebook extends Model
 {
     use HasFactory, SoftDeletes;
-    protected $appends = ['average_rating'];
+    protected $appends = ['average_rating', 'discount_info'];
     protected $with = ['reviews'];
 
     protected $fillable = [
@@ -108,6 +108,68 @@ class Ebook extends Model
         }
 
         return round($reviews->avg('rating'), 1);
+    }
+
+    // Get discount info based on active promotions
+    public function getDiscountInfoAttribute()
+    {
+        if ($this->is_free || !$this->price) {
+            return null;
+        }
+
+        $promotions = \Illuminate\Support\Facades\Cache::remember('active_promotions', 60, function() {
+            return \App\Models\Promotion::active()->get();
+        });
+
+        $bestDiscountAmount = 0;
+        $bestPromotion = null;
+
+        foreach ($promotions as $promo) {
+            $applies = false;
+            
+            if ($promo->target_type === 'all_ebooks') {
+                $applies = true;
+            } elseif ($promo->target_type === 'category') {
+                $ids = is_string($promo->target_ids) ? json_decode($promo->target_ids, true) : $promo->target_ids;
+                if (is_array($ids) && in_array($this->category_id, $ids)) {
+                    $applies = true;
+                }
+            } elseif ($promo->target_type === 'specific_ebooks') {
+                $ids = is_string($promo->target_ids) ? json_decode($promo->target_ids, true) : $promo->target_ids;
+                if (is_array($ids) && in_array($this->id, $ids)) {
+                    $applies = true;
+                }
+            }
+
+            if ($applies) {
+                $discountAmount = $promo->discount_type === 'percent'
+                    ? ($this->price * $promo->discount_value / 100)
+                    : $promo->discount_value;
+                
+                if ($discountAmount > $bestDiscountAmount) {
+                    $bestDiscountAmount = $discountAmount;
+                    $bestPromotion = $promo;
+                }
+            }
+        }
+
+        if (!$bestPromotion || $bestDiscountAmount <= 0) {
+            return null;
+        }
+
+        $bestDiscountAmount = min($bestDiscountAmount, $this->price);
+        $discountedPrice = max(0, $this->price - $bestDiscountAmount);
+        $discountPercent = $bestPromotion->discount_type === 'percent'
+            ? $bestPromotion->discount_value
+            : round(($bestDiscountAmount / $this->price) * 100);
+
+        return [
+            'original_price' => (float)$this->price,
+            'discounted_price' => (float)$discountedPrice,
+            'discount_amount' => (float)$bestDiscountAmount,
+            'discount_percent' => (float)$discountPercent,
+            'promotion_name' => $bestPromotion->name,
+        ];
     }
 
     // Get purchase count

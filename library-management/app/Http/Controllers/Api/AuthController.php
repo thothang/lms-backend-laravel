@@ -44,7 +44,12 @@ class AuthController extends Controller
         ]);
 
         // Send Email verification
-        $verifyUrl = config('services.frontend_url', 'http://localhost:5173') . '/verify-email/' . $verificationToken;
+        $source = $request->query('source', 'web');
+        if ($source === 'mobile') {
+            $verifyUrl = url('/api/verify-email/' . $verificationToken . '?source=mobile');
+        } else {
+            $verifyUrl = config('services.frontend_url', 'http://localhost:5173') . '/verify-email/' . $verificationToken;
+        }
         try {
             Mail::to($user->email)->send(new VerifyEmailMail($user, $verifyUrl));
         } catch (\Exception $e) {
@@ -131,6 +136,11 @@ class AuthController extends Controller
                 'access_token' => $jwtToken,
                 'user' => $user
             ]);
+        }
+
+        $source = $request->query('source', 'web');
+        if ($source === 'mobile') {
+            return redirect()->away('lmsmobile://login?verified=1');
         }
 
         return redirect()->away($frontendUrl . '/?verified=1&token=' . $jwtToken);
@@ -239,6 +249,8 @@ class AuthController extends Controller
             'status' => $user->status,
             'balance' => $user->balance,
             'total_debt' => $user->total_debt,
+            'reward_points' => $user->reward_points,
+            'membership_tier' => $user->membership_tier,
             'permissions' => $user->role === 'librarian' 
                 ? ($user->rolePermission?->getAllPermissions() ?? [])
                 : [],
@@ -405,6 +417,23 @@ class AuthController extends Controller
             'balance' => $user->balance,
             'earnings_balance' => $user->earnings_balance,
             'total_debt' => $user->total_debt,
+        ]);
+    }
+    /**
+     * Get user ranking info and point history
+     */
+    public function ranking(): JsonResponse
+    {
+        $user = JWTAuth::parseToken()->authenticate();
+
+        $history = \App\Models\PointHistory::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return response()->json([
+            'reward_points' => $user->reward_points,
+            'membership_tier' => $user->membership_tier,
+            'history' => $history,
         ]);
     }
 }

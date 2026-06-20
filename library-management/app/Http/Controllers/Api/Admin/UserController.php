@@ -30,17 +30,17 @@ class UserController extends Controller
                     $query = User::query();
 
                     // Filter by role
-                    if ($request->has('role')) {
+                    if ($request->filled('role')) {
                         $query->where('role', $request->role);
                     }
 
                     // Filter by status
-                    if ($request->has('status')) {
+                    if ($request->filled('status')) {
                         $query->where('status', $request->status);
                     }
 
                     // Search
-                    if ($request->has('search')) {
+                    if ($request->filled('search')) {
                         $search = $request->search;
                         $query->where(function ($q) use ($search) {
                             $q->where('name', 'like', "%{$search}%")

@@ -38,6 +38,19 @@ class BorrowService
             // Calculate deposit
             $depositAmount = $book->getDepositAmount();
             $dailyFee = $book->getEffectiveDailyFee();
+
+            // Apply ranking tier discounts
+            if ($user->membership_tier === \App\Services\RankingService::TIER_SILVER) {
+                $depositAmount = $depositAmount * 0.9;
+                $dailyFee = $dailyFee * 0.9;
+            } elseif ($user->membership_tier === \App\Services\RankingService::TIER_GOLD) {
+                $depositAmount = $depositAmount * 0.7;
+                $dailyFee = $dailyFee * 0.8;
+            } elseif ($user->membership_tier === \App\Services\RankingService::TIER_PLATINUM) {
+                $depositAmount = $depositAmount * 0.5;
+                $dailyFee = $dailyFee * 0.7;
+            }
+
             $borrowDays = $days;
             $prepaidFee = $dailyFee * $borrowDays;
             $totalDeduction = $depositAmount + $prepaidFee;
@@ -300,6 +313,17 @@ class BorrowService
                 'actual_fee' => $feeData['borrow_fee'],
             ]);
 
+            // Apply points
+            if ($user && $borrowRecord->wasChanged('actual_return_date')) {
+                $overdueDays = max(0, Carbon::now()->startOfDay()->diffInDays($borrowRecord->due_date->startOfDay(), false) * -1);
+                $rankingService = app(\App\Services\RankingService::class);
+                if ($overdueDays <= 0) {
+                    $rankingService->addPoints($user, 10, 'returned_on_time', $borrowRecord);
+                } else {
+                    $rankingService->deductPoints($user, $overdueDays * 5, 'overdue_penalty', $borrowRecord);
+                }
+            }
+
             // Update copy status
             $copy->update(['status' => 'available']);
             $book->updateAvailableCopies();
@@ -389,6 +413,17 @@ class BorrowService
                 'actual_return_date' => Carbon::now(),
                 'actual_fee' => $borrowFee,
             ]);
+
+            // Apply points
+            if ($user && $borrowRecord->wasChanged('actual_return_date')) {
+                $overdueDays = max(0, Carbon::now()->startOfDay()->diffInDays($borrowRecord->due_date->startOfDay(), false) * -1);
+                $rankingService = app(\App\Services\RankingService::class);
+                if ($overdueDays <= 0) {
+                    $rankingService->addPoints($user, 10, 'returned_on_time', $borrowRecord);
+                } else {
+                    $rankingService->deductPoints($user, $overdueDays * 5, 'overdue_penalty', $borrowRecord);
+                }
+            }
 
             // Update copy status
             $copy->update(['status' => 'available']);
@@ -704,6 +739,16 @@ class BorrowService
                     'actual_fee' => $feeData['borrow_fee'],
                 ]);
 
+                if ($user && $borrowRecord->wasChanged('actual_return_date')) {
+                    $overdueDays = max(0, Carbon::now()->startOfDay()->diffInDays($borrowRecord->due_date->startOfDay(), false) * -1);
+                    $rankingService = app(\App\Services\RankingService::class);
+                    if ($overdueDays <= 0) {
+                        $rankingService->addPoints($user, 10, 'returned_on_time', $borrowRecord);
+                    } else {
+                        $rankingService->deductPoints($user, $overdueDays * 5, 'overdue_penalty', $borrowRecord);
+                    }
+                }
+
                 // Nếu đã trả hết (qua balance), cập nhật copy và queue
                 if ($addedToDebt <= 0) {
                     $copy->update(['status' => 'available']);
@@ -770,6 +815,17 @@ class BorrowService
                 'actual_return_date' => Carbon::now(),
                 'actual_fee' => $feeData['borrow_fee'],
             ]);
+
+            // Apply points
+            if ($user && $borrowRecord->wasChanged('actual_return_date')) {
+                $overdueDays = max(0, Carbon::now()->startOfDay()->diffInDays($borrowRecord->due_date->startOfDay(), false) * -1);
+                $rankingService = app(\App\Services\RankingService::class);
+                if ($overdueDays <= 0) {
+                    $rankingService->addPoints($user, 10, 'returned_on_time', $borrowRecord);
+                } else {
+                    $rankingService->deductPoints($user, $overdueDays * 5, 'overdue_penalty', $borrowRecord);
+                }
+            }
 
             // Update copy status
             $copy->update(['status' => 'available']);
@@ -955,7 +1011,7 @@ class BorrowService
 
             // 5. Log action
             AuditLog::log(
-                0, // System
+                null, // System
                 'EXPIRE_PENDING_PICKUP',
                 'borrow_records',
                 $borrowRecord->id,
