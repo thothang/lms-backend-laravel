@@ -3,7 +3,7 @@ import {
   FileText, TrendingUp, AlertTriangle, BookMarked,
   RefreshCcw, Clock, ArrowUpRight, ArrowDownRight, Calendar,
   BarChart3, PieChart, Users, CheckCircle, Target, Star,
-  Library, Filter
+  Library, Filter, AlertCircle
 } from 'lucide-react';
 import { 
   useLibrarianBorrowStats, 

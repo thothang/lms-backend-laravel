@@ -10,14 +10,9 @@ const NotificationPanel = () => {
   const markReadMutation = useMarkNotificationRead();
   const notifications = notificationsData?.data || notificationsData || [];
 
-  const handleMouseEnter = async (notification) => {
+  const handleMouseEnter = (notification) => {
     if (!notification.is_read) {
-      try {
-        await markReadMutation.mutateAsync(notification.id);
-        refetch();
-      } catch {
-        // Silently ignore
-      }
+      markReadMutation.mutate(notification.id);
     }
   };
 

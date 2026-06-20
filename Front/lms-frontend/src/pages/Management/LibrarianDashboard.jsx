@@ -87,7 +87,7 @@ const LibrarianDashboard = () => {
     { name: 'Sách trong kho', value: stats.totalBooks, icon: BookMarked, color: 'text-amber-600', bg: 'bg-amber-50', trend: 'Đầu sách', up: false },
     { name: 'Yêu cầu chờ mượn', value: stats.queueCount, icon: AlertCircle, color: 'text-rose-600', bg: 'bg-rose-50', trend: 'Đặt trước Online', up: true },
     { name: 'Ebook chờ duyệt', value: stats.pendingEbooks, icon: Clock, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 'Chờ xuất bản', up: true },
-    { name: 'Thư liên hệ', value: stats.pendingContacts, icon: MailCheck, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Chưa trả lời', up: false, link: '/messages' },
+    { name: 'Thư liên hệ', value: stats.pendingContacts, icon: MailCheck, color: 'text-blue-600', bg: 'bg-blue-50', trend: 'Chưa trả lời', up: false, link: '/librarian/messages' },
   ];
 
   if (isLoading) {

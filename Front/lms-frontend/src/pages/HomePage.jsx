@@ -48,17 +48,26 @@ const HomePage = () => {
 
   // Process home data from React Query
   const carouselData = homeData ? (() => {
-    const carouselBooks = homeData.carousel?.books || [];
-    const carouselEbooks = homeData.carousel?.ebooks || [];
+    const carouselBooks = (homeData.carousel?.books || []).map(b => ({...b, _type: 'book'}));
+    const carouselEbooks = (homeData.carousel?.ebooks || []).map(b => ({...b, _type: 'ebook'}));
     const combinedCarousel = [...carouselBooks, ...carouselEbooks];
     combinedCarousel.sort((a, b) => (a.carousel_order || 999) - (b.carousel_order || 999));
     return combinedCarousel;
   })() : [];
 
   const categoriesData = homeData?.categories || [];
-  const hotBooksData = homeData ? [...(homeData.hot?.books || []), ...(homeData.hot?.ebooks || [])] : [];
-  const featuredBooksData = homeData ? [...(homeData.featured?.books || []), ...(homeData.featured?.ebooks || [])] : [];
-  const freeEbooksData = homeData?.free_ebooks || [];
+  
+  const hotBooksData = homeData ? [
+    ...(homeData.hot?.books || []).map(b => ({...b, _type: 'book'})), 
+    ...(homeData.hot?.ebooks || []).map(b => ({...b, _type: 'ebook'}))
+  ] : [];
+  
+  const featuredBooksData = homeData ? [
+    ...(homeData.featured?.books || []).map(b => ({...b, _type: 'book'})), 
+    ...(homeData.featured?.ebooks || []).map(b => ({...b, _type: 'ebook'}))
+  ] : [];
+  
+  const freeEbooksData = homeData ? (homeData.free_ebooks || []).map(b => ({...b, _type: 'ebook'})) : [];
 
 
 

@@ -60,7 +60,7 @@ const LibrarianUsers = () => {
       const nextParams = { ...filters, page: currentPage + 1, limit: perPage };
       queryClient.prefetchQuery({
         queryKey: ['librarian', 'users', nextParams],
-        queryFn: () => api.get('/librarian/users', { params: nextParams }).then(res => res.data)
+        queryFn: () => api.get('/librarian/users/all', { params: nextParams }).then(res => res.data)
       });
     }
   }, [currentPage, totalPages, filters, perPage, queryClient]);

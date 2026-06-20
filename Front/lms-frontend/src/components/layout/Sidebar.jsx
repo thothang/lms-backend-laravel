@@ -15,16 +15,19 @@ import { adminService } from '../../services/adminService';
 import { librarianService } from '../../services/librarianService';
 import { authorService } from '../../services/authorService';
 import { catalogService } from '../../services/catalogService';
+import api from '../../services/api';
 
 const prefetchMap = {
   // ADMIN ROUTES
-  '/admin/dashboard': () => adminService.getOverview(),
+  '/admin/dashboard': () => adminService.getRevenue(),
   '/admin/users': () => adminService.getUsers({ limit: 100 }),
   '/admin/permissions': () => adminService.getPermissions(),
   '/admin/ebooks': () => adminService.getEbooks({ limit: 100 }),
   '/admin/books': () => catalogService.getBooks({ limit: 10 }),
   '/admin/withdrawals': () => adminService.getWithdrawals(),
-  '/admin/settings': () => adminService.getSystemSettings(),
+  '/admin/settings': () => adminService.getSettings(),
+  '/admin/promotions': () => api.get('/management/promotions').then(res => res.data?.data || res.data || []),
+  '/admin/display': () => api.get('/management/display-items').then(res => res.data),
   
   // LIBRARIAN ROUTES
   '/librarian/dashboard': () => librarianService.getDashboardOverview(),
@@ -46,13 +49,15 @@ const prefetchMap = {
 };
 
 const queryKeyMap = {
-  '/admin/dashboard': ['admin', 'overview'],
+  '/admin/dashboard': ['admin', 'revenue'],
   '/admin/users': ['admin', 'users', { limit: 100 }],
   '/admin/permissions': ['admin', 'permissions'],
   '/admin/ebooks': ['admin', 'ebooks', { limit: 100 }],
   '/admin/books': ['books', { limit: 10 }],
   '/admin/withdrawals': ['admin', 'withdrawals'],
   '/admin/settings': ['admin', 'settings'],
+  '/admin/promotions': ['admin', 'promotions'],
+  '/admin/display': ['management', 'display-items'],
   
   '/librarian/dashboard': ['librarian', 'dashboard'],
   '/librarian/books': ['books', { limit: 10 }],
@@ -158,6 +163,7 @@ const Sidebar = () => {
     if (hasPerm('can_manage_users')) menu.push({ name: 'Quản lý Người dùng', path: '/librarian/users', icon: Users });
     if (hasPerm('can_view_reports')) menu.push({ name: 'Xem Báo cáo', path: '/librarian/reports', icon: FileText });
     if (hasPerm('can_manage_messages')) menu.push({ name: 'Quản lý Tin nhắn', path: '/librarian/messages', icon: MailCheck });
+    menu.push({ name: 'Khuyến mãi Ebook', path: '/librarian/promotions', icon: Wallet });
     menu.push({ name: 'Quản lý Hiển thị', path: '/librarian/display', icon: MonitorPlay });
     return menu;
   };
@@ -177,6 +183,7 @@ const Sidebar = () => {
       { name: 'Quản lý Ebook', path: '/admin/ebooks', icon: FileText },
       { name: 'Quản lý kho sách', path: '/admin/books', icon: BookMarked },
       { name: 'Quản lý rút tiền', path: '/admin/withdrawals', icon: Wallet },
+      { name: 'Khuyến mãi Ebook', path: '/admin/promotions', icon: Wallet },
       { name: 'Quản lý hiển thị', path: '/admin/display', icon: MonitorPlay },
       { name: 'Cấu hình hệ thống', path: '/admin/settings', icon: Settings },
     ]

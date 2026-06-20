@@ -48,6 +48,7 @@ const LibrarianUsers = lazy(() => import('./pages/Management/LibrarianUsers'));
 const LibrarianReports = lazy(() => import('./pages/Management/LibrarianReports'));
 const LibrarianMessages = lazy(() => import('./pages/Management/LibrarianMessages'));
 const DisplayManager = lazy(() => import('./pages/Management/DisplayManager'));
+const ManagePromotions = lazy(() => import('./pages/Management/ManagePromotions'));
 
 // Loading fallback
 const PageLoader = () => (
@@ -164,6 +165,7 @@ function App() {
                 <Route path="reports" element={<LibrarianReports />} />
                 <Route path="messages" element={<LibrarianMessages />} />
                 <Route path="display" element={<DisplayManager />} />
+                <Route path="promotions" element={<ManagePromotions />} />
               </Route>
 
               <Route path="/admin" element={
@@ -180,6 +182,7 @@ function App() {
                 <Route path="books" element={<ManageBooks />} />
                 <Route path="withdrawals" element={<ManageWithdrawals />} />
                 <Route path="display" element={<DisplayManager />} />
+                <Route path="promotions" element={<ManagePromotions />} />
                 <Route path="settings" element={<SystemSettings />} />
               </Route>
             </Routes>

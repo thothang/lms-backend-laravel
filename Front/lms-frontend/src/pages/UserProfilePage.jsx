@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import Navbar from '../components/home/Navbar';
 import Footer from '../components/home/Footer';
 import { useAuth } from '../context/AuthContext';
-import { User, BookMarked, BookHeart, BookmarkPlus, LogOut, Wallet, Plus } from 'lucide-react';
+import { User, BookMarked, BookHeart, BookmarkPlus, LogOut, Wallet, Plus, Award } from 'lucide-react';
 
 // React Query hooks
 import { useUserBalance, useLogout as useLogoutMutation } from '../hooks/queries';
@@ -16,6 +16,7 @@ import ReservationList from '../components/profile/ReservationList';
 import PurchasedEbooks from '../components/profile/PurchasedEbooks';
 import DepositModal from '../components/profile/DepositModal';
 import ConfirmModal from '../components/ui/ConfirmModal';
+import RankingHistory from '../components/profile/RankingHistory';
 
 const UserProfilePage = () => {
   const { user, logout } = useAuth();
@@ -60,6 +61,8 @@ const UserProfilePage = () => {
          return <ReservationList />;
       case 'ebooks':
          return <PurchasedEbooks />;
+      case 'ranking':
+         return <RankingHistory />;
       default:
          return user ? <ProfileInfo currentUser={user} onUpdate={() => {}} /> : null;
     }
@@ -86,7 +89,19 @@ const UserProfilePage = () => {
                 {(user?.name && typeof user.name === 'string') ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="overflow-hidden">
-                <h1 className="text-lg sm:text-2xl font-bold text-slate-800 truncate">Xin chào, {user?.name || 'Người dùng'}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-2xl font-bold text-slate-800 truncate">Xin chào, {user?.name || 'Người dùng'}</h1>
+                  {user?.membership_tier && (
+                    <span className={`px-2 py-0.5 text-xs font-bold uppercase rounded-full border ${
+                      user.membership_tier === 'platinum' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' :
+                      user.membership_tier === 'gold' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                      user.membership_tier === 'silver' ? 'bg-slate-100 text-slate-700 border-slate-200' :
+                      'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {user.membership_tier}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-slate-500 truncate">{user?.email || ''}</p>
               </div>
             </div>
@@ -143,6 +158,12 @@ const UserProfilePage = () => {
                     className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-medium transition-colors whitespace-nowrap text-sm shrink-0 lg:w-full active:scale-95 ${activeTab === 'ebooks' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100'}`}
                   >
                     <BookHeart size={18} /> <span className="hidden sm:inline lg:inline">Ebook đã mua</span><span className="sm:hidden lg:hidden">Ebook</span>
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('ranking')}
+                    className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-medium transition-colors whitespace-nowrap text-sm shrink-0 lg:w-full active:scale-95 ${activeTab === 'ranking' ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 active:bg-slate-100'}`}
+                  >
+                    <Award size={18} /> <span className="hidden sm:inline lg:inline">Xếp hạng</span><span className="sm:hidden lg:hidden">Hạng</span>
                   </button>
                   
                   <div className="hidden lg:block h-px bg-slate-100 my-2 mx-2"></div>

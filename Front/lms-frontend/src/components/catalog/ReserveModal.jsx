@@ -3,14 +3,23 @@ import Modal from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Bookmark, Clock, ArrowRight, WalletIcon, Info } from 'lucide-react';
 import { Input } from '../ui/Input';
+import { useAuth } from '../../context/AuthContext';
 
 const ReserveModal = ({ isOpen, onClose, onConfirm, book, isLoading }) => {
+  const { user } = useAuth();
   const [days, setDays] = useState(7);
   const dailyFee = Number(book?.daily_fee || 0);
   
-  // Rule: Prepay 10% of total expected borrow fee
-  const totalExpectedFee = dailyFee * days;
-  const reservationFee = Math.max(1000, Math.round(totalExpectedFee * 0.1));
+  const tier = user?.membership_tier || 'bronze';
+  let feeDiscount = 0;
+  
+  if (tier === 'silver') { feeDiscount = 10; }
+  else if (tier === 'gold') { feeDiscount = 20; }
+  else if (tier === 'platinum') { feeDiscount = 30; }
+
+  const baseExpectedFee = dailyFee * days;
+  const discountedExpectedFee = baseExpectedFee * (1 - feeDiscount / 100);
+  const reservationFee = Math.max(1000, Math.round(discountedExpectedFee * 0.1));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -54,11 +63,20 @@ const ReserveModal = ({ isOpen, onClose, onConfirm, book, isLoading }) => {
             <div className="flex items-center gap-2 text-xs font-black text-amber-600 uppercase tracking-widest">
               <Info size={14} /> Cách tính phí đặt trước (10%)
             </div>
+
+            {feeDiscount > 0 && (
+              <div className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-3 py-2 rounded-lg mb-2">
+                Hạng <strong>{tier.toUpperCase()}</strong>: Giảm {feeDiscount}% phí mượn
+              </div>
+            )}
             
             <div className="space-y-3 text-sm text-slate-600 leading-relaxed">
               <div className="flex justify-between items-center">
-                <span>Phí mượn mượn dự kiến ({days} ngày):</span>
-                <span className="font-bold text-slate-700">{(days * dailyFee).toLocaleString('vi-VN')} ₫</span>
+                <span>Phí mượn dự kiến ({days} ngày):</span>
+                <div className="text-right">
+                  {feeDiscount > 0 && <span className="text-xs line-through text-slate-400 mr-2">{baseExpectedFee.toLocaleString('vi-VN')} ₫</span>}
+                  <span className="font-bold text-slate-700">{discountedExpectedFee.toLocaleString('vi-VN')} ₫</span>
+                </div>
               </div>
               
               <div className="flex justify-between items-center pt-3 border-t border-amber-100">

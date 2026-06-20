@@ -133,6 +133,12 @@ const BookDetailsPage = () => {
       toast.error('Vui lòng chọn số sao từ 1 đến 5'); return;
     }
 
+    const wordCount = commentInput.trim().split(/\s+/).filter(word => word.length > 0).length;
+    if (wordCount < 60) {
+      toast.error(`Đánh giá cần ít nhất 60 từ (hiện tại: ${wordCount} từ). Đánh giá chất lượng giúp bạn nhận điểm thưởng!`);
+      return;
+    }
+
     reviewMutation.mutate(
       { type, id, data: { rating: ratingInput, comment: commentInput } },
       {
@@ -382,7 +388,7 @@ const BookDetailsPage = () => {
                               id="review-comment"
                               rows="3"
                               className="w-full text-sm border border-slate-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors bg-white font-sans text-slate-700"
-                              placeholder="Chia sẻ cảm nhận của bạn về cuốn sách này..."
+                              placeholder="Chia sẻ cảm nhận của bạn về cuốn sách này (tối thiểu 60 từ để nhận 5 điểm thưởng)..."
                               value={commentInput}
                               onChange={e => setCommentInput(e.target.value)}
                             ></textarea>
@@ -392,7 +398,7 @@ const BookDetailsPage = () => {
                               className="bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-2"
                             >
                               {reviewMutation.isPending && <Loader2 size={16} className="animate-spin" />}
-                              Gửi đánh giá
+                              Gửi đánh giá & Nhận thưởng
                             </button>
                           </form>
                         </div>
@@ -417,11 +423,25 @@ const BookDetailsPage = () => {
                       </div>
                    ) : (
                     !hasBoughtEbook && (
-                      <div className="bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl sm:mr-auto">
+                      <div className="bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl sm:mr-auto flex flex-col">
                           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block mb-0.5">Giá E-Book</span>
-                          <span className="text-xl font-black text-slate-800">
-                             {isFreeEbook ? 'Miễn phí' : `${Number(data.price || 0).toLocaleString('vi-VN')} ₫`}
-                          </span>
+                          {data.discount_info ? (
+                             <div className="flex items-baseline gap-2">
+                               <span className="text-xl font-black text-rose-600">
+                                  {Number(data.discount_info.discounted_price || 0).toLocaleString('vi-VN')} ₫
+                               </span>
+                               <span className="text-sm text-slate-400 line-through font-semibold">
+                                  {Number(data.price || 0).toLocaleString('vi-VN')} ₫
+                               </span>
+                               <span className="text-[10px] bg-rose-500 text-white px-1.5 py-0.5 rounded font-bold uppercase ml-1 shadow-sm">
+                                  -{data.discount_info.discount_percent}%
+                               </span>
+                             </div>
+                          ) : (
+                             <span className="text-xl font-black text-slate-800">
+                                {isFreeEbook ? 'Miễn phí' : `${Number(data.price || 0).toLocaleString('vi-VN')} ₫`}
+                             </span>
+                          )}
                       </div>
                     )
                   )}

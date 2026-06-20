@@ -63,6 +63,12 @@ const BookCard = ({ book }) => {
                 Miễn phí
               </span>
             )}
+            
+            {bookType === 'ebook' && !book.is_free && book.discount_info && (
+              <span className="px-2 py-1 bg-rose-500/90 text-white rounded-md text-[10px] font-bold backdrop-blur-md shadow-sm flex items-center gap-0.5 uppercase tracking-tighter">
+                -{book.discount_info.discount_percent}%
+              </span>
+            )}
           </div>
 
           {/* Status Badge */}
@@ -88,6 +94,30 @@ const BookCard = ({ book }) => {
             {book.uploaded_by_admin ? (book.author_name || 'Đang cập nhật') : (book.author?.name || book.author_name || book.author || 'Đang cập nhật')}
           </span>
         </p>
+
+        {/* Price Section */}
+        <div className="mt-1.5 flex items-baseline gap-2">
+          {bookType === 'ebook' ? (
+             !book.is_free && book.discount_info ? (
+                <>
+                  <span className="text-[15px] font-black text-rose-600 tracking-tight">
+                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(book.discount_info.discounted_price)}
+                  </span>
+                  <span className="text-xs text-slate-400 line-through font-semibold">
+                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(book.price)}
+                  </span>
+                </>
+             ) : (
+                <span className="text-[15px] font-black text-indigo-600 tracking-tight">
+                  {book.is_free ? 'Miễn phí' : (book.price ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(book.price) : '')}
+                </span>
+             )
+          ) : (
+             <span className="text-[15px] font-black text-indigo-600 tracking-tight">
+               {book.daily_fee ? `${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(book.daily_fee)}/ngày` : 'Miễn phí mượn'}
+             </span>
+          )}
+        </div>
         
         <div className="mt-auto pt-3 flex justify-between items-center w-full border-t border-slate-50">
           <span className="text-indigo-600 font-bold text-xs bg-indigo-50 px-2 py-1 rounded-lg truncate max-w-[55%]">

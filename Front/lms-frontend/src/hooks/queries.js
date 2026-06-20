@@ -259,6 +259,57 @@ export const useLibrarianPermissions = () => {
   });
 };
 
+export const usePromotions = () => {
+  return useQuery({
+    queryKey: ['admin', 'promotions'],
+    queryFn: () => api.get('/management/promotions').then(res => res.data?.data || res.data || []),
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
+};
+
+export const useCreatePromotion = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data) => api.post('/management/promotions', data).then(res => res.data),
+    onSuccess: () => {
+      toast.success('Tạo chương trình khuyến mãi thành công');
+      invalidateRelatedCaches(queryClient, [['admin', 'promotions'], 'ebooks', 'home']);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Lỗi khi tạo khuyến mãi');
+    }
+  });
+};
+
+export const useUpdatePromotion = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) => api.put(`/management/promotions/${id}`, data).then(res => res.data),
+    onSuccess: () => {
+      toast.success('Cập nhật chương trình khuyến mãi thành công');
+      invalidateRelatedCaches(queryClient, [['admin', 'promotions'], 'ebooks', 'home']);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Lỗi khi cập nhật khuyến mãi');
+    }
+  });
+};
+
+export const useDeletePromotion = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.delete(`/management/promotions/${id}`).then(res => res.data),
+    onSuccess: () => {
+      toast.success('Xóa chương trình khuyến mãi thành công');
+      invalidateRelatedCaches(queryClient, [['admin', 'promotions'], 'ebooks', 'home']);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Lỗi khi xóa khuyến mãi');
+    }
+  });
+};
+
 // ===== LIBRARIAN QUERIES =====
 export const useBorrows = (params = {}) => {
   return useQuery({
@@ -494,6 +545,15 @@ export const useUserProfile = () => {
     queryFn: () => api.get('/profile').then(res => res.data?.data || res.data || res || {}),
     staleTime: 5 * 60 * 1000, // Cache 5 phút
     refetchOnWindowFocus: false,
+  });
+};
+
+export const useRankingProfile = () => {
+  return useQuery({
+    queryKey: ['user', 'ranking'],
+    queryFn: () => api.get('/profile/ranking').then(res => res.data),
+    staleTime: 5 * 60 * 1000, // Cache 5 phút
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -1561,7 +1621,55 @@ export const useMarkNotificationRead = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id) => api.put(`/notifications/${id}/read`),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ['user', 'notifications'] });
+
+      // Snapshot the previous value
+      const previousNotifications = queryClient.getQueryData(['user', 'notifications']);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['user', 'notifications'], (old) => {
+        if (!old) return old;
+
+        // Handle array response
+        if (Array.isArray(old)) {
+          return old.map((notif) =>
+            notif.id === id ? { ...notif, is_read: true, read_at: new Date().toISOString() } : notif
+          );
+        }
+
+        // Handle nested response format: res.data?.data || res.data || []
+        if (typeof old === 'object') {
+          if (Array.isArray(old.data)) {
+            return {
+              ...old,
+              data: old.data.map((notif) =>
+                notif.id === id ? { ...notif, is_read: true, read_at: new Date().toISOString() } : notif
+              ),
+            };
+          }
+          if (Array.isArray(old.notifications)) {
+            return {
+              ...old,
+              notifications: old.notifications.map((notif) =>
+                notif.id === id ? { ...notif, is_read: true, read_at: new Date().toISOString() } : notif
+              ),
+            };
+          }
+        }
+        return old;
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousNotifications };
+    },
+    onError: (err, id, context) => {
+      if (context?.previousNotifications) {
+        queryClient.setQueryData(['user', 'notifications'], context.previousNotifications);
+      }
+    },
+    onSettled: () => {
       invalidateRelatedCaches(queryClient, [
         'user', 'notifications',
       ]);

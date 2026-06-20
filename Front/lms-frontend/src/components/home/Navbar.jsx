@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications, useMarkNotificationRead } from '../../hooks/queries';
 import { publicService } from '../../services/publicService';
+import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import ConfirmModal from '../ui/ConfirmModal';
@@ -19,6 +20,26 @@ const Navbar = () => {
   const isActive = user?.status === 'active';
   const notificationsQuery = useNotifications(!!user && isActive);
   const markNotificationReadMutation = useMarkNotificationRead();
+  const queryClient = useQueryClient();
+
+  // Prefetch Catalog Data on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Prefetch categories
+      queryClient.prefetchQuery({
+        queryKey: ['categories'],
+        queryFn: () => publicService.getCategories(),
+        staleTime: 10 * 60 * 1000,
+      });
+      // Prefetch default catalog list
+      queryClient.prefetchQuery({
+        queryKey: ['search', { keyword: '', category_id: '', type: 'all', limit: 100 }],
+        queryFn: () => publicService.search({ keyword: '', category_id: '', type: 'all', limit: 100 }),
+        staleTime: 5 * 60 * 1000,
+      });
+    }, 2000); // Delay 2s to not block initial render
+    return () => clearTimeout(timer);
+  }, [queryClient]);
 
   // Mobile menu state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);

@@ -16,4 +16,4 @@ Allow: /contact
 Allow: /borrowing-rules
 
 # Sitemap
-Sitemap: https://yourdomain.com/sitemap.xml
+Sitemap: https://lms.kainning.io.vn/sitemap.xml

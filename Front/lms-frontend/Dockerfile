@@ -2,7 +2,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 COPY . .
 # Cần copy biến môi trường nếu có. Vite chạy build tạo /dist
 RUN npm run build && npm cache clean --force 
